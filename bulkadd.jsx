@@ -1,0 +1,162 @@
+/* Bulk add transactions: paste-to-parse + editable grid, any date up to today. */
+const { useState: useStateBulk, useEffect: useEffectBulk, useMemo: useMemoBulk } = React;
+const useState = useStateBulk, useEffect = useEffectBulk, useMemo = useMemoBulk;
+
+const _pad2 = (n) => String(n).padStart(2, "0");
+const _toInput = (d) => `${d.getFullYear()}-${_pad2(d.getMonth() + 1)}-${_pad2(d.getDate())}`;
+const _normalizeDate = (s) => {
+  s = String(s).trim();
+  let d;
+  if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)) { const [y, m, da] = s.split("-").map(Number); d = new Date(y, m - 1, da); }
+  else { const t = new Date(s); if (!isNaN(t)) d = t; }
+  if (!d || isNaN(d)) return null;
+  return _toInput(d);
+};
+
+function BulkAdd({ open, onClose, onInsert, categories, catById, minDate, maxDate }) {
+  const minStr = _toInput(minDate), maxStr = _toInput(maxDate);
+  const firstCat = categories[0] ? categories[0].id : "";
+  const blank = () => ({ date: maxStr, merchant: "", cat: firstCat, amount: "", need: catById[firstCat] ? catById[firstCat].essential : true });
+  const [rows, setRows] = useState([]);
+  const [paste, setPaste] = useState("");
+  const [showPaste, setShowPaste] = useState(false);
+
+  useEffect(() => {
+    if (open) { setRows([blank(), blank(), blank()]); setPaste(""); setShowPaste(false); }
+  }, [open]);
+
+  if (!open) return null;
+
+  const matchCat = (str) => {
+    if (!str) return firstCat;
+    const l = str.toLowerCase().trim();
+    const hit = categories.find((c) => c.id === l || c.name.toLowerCase() === l) ||
+                categories.find((c) => c.name.toLowerCase().includes(l) || l.includes(c.name.toLowerCase()));
+    return hit ? hit.id : firstCat;
+  };
+
+  const update = (i, key, val) => setRows((prev) => prev.map((r, j) => {
+    if (j !== i) return r;
+    const next = { ...r, [key]: val };
+    if (key === "cat" && catById[val]) next.need = catById[val].essential;
+    return next;
+  }));
+  const addRow = () => setRows((prev) => [...prev, blank()]);
+  const removeRow = (i) => setRows((prev) => prev.filter((_, j) => j !== i));
+
+  const parsePaste = () => {
+    const NEED_WORDS = ["need", "needs", "necessity", "essential"];
+    const WANT_WORDS = ["want", "wants", "discretionary", "non-essential", "nonessential"];
+    const lines = paste.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const out = [];
+    lines.forEach((line) => {
+      const parts = line.split(/\t|,/).map((s) => s.trim());
+      if (parts.length < 2) return;
+      const [dStr, amtStr, catStr, ...rest] = parts;
+      const amount = parseFloat(String(amtStr).replace(/[^0-9.]/g, ""));
+      const date = _normalizeDate(dStr);
+      if (!(amount > 0) || !date) return;
+      const cat = matchCat(catStr);
+      // optional trailing type column (need / want) — anything else stays part of the merchant
+      let need = null;
+      if (rest.length) {
+        const last = rest[rest.length - 1].toLowerCase();
+        if (NEED_WORDS.includes(last)) { need = true; rest.pop(); }
+        else if (WANT_WORDS.includes(last)) { need = false; rest.pop(); }
+      }
+      out.push({ date, merchant: rest.join(", ").trim() || catById[cat].name, cat,
+        amount: String(amount), need: need != null ? need : catById[cat].essential });
+    });
+    if (out.length) { setRows((prev) => [...prev.filter((r) => r.amount || r.merchant), ...out]); setPaste(""); setShowPaste(false); }
+  };
+
+  const rowValid = (r) => parseFloat(r.amount) > 0 && r.date >= minStr && r.date <= maxStr && catById[r.cat];
+  const valid = rows.filter(rowValid);
+  const validTotal = valid.reduce((s, r) => s + parseFloat(r.amount), 0);
+
+  const doInsert = () => {
+    const items = valid.map((r) => {
+      const [y, m, d] = r.date.split("-").map(Number);
+      return { year: y, month: m - 1, day: d, cat: r.cat, amount: Math.round(parseFloat(r.amount) * 100) / 100,
+        merchant: r.merchant.trim() || catById[r.cat].name, need: r.need };
+    });
+    if (items.length) onInsert(items);
+    onClose();
+  };
+
+  return (
+    <div className="modal-scrim" onMouseDown={onClose}>
+      <div className="modal modal-wide" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <div>
+            <h3>Bulk add transactions</h3>
+            <p className="td-sub">Back-date as many as you like — any date up to today.</p>
+          </div>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
+        </div>
+
+        <div className="bulk-toolbar">
+          <button type="button" className="link-btn" onClick={() => setShowPaste((s) => !s)}>
+            {showPaste ? "Hide paste" : "Paste from spreadsheet"}
+          </button>
+          <span className="bulk-count">{valid.length} of {rows.length} ready · {fmtUSD(validTotal)}</span>
+        </div>
+
+        {showPaste && (
+          <div className="bulk-paste">
+            <textarea value={paste} onChange={(e) => setPaste(e.target.value)} rows={4}
+              placeholder={"One per line:  date, amount, category, merchant, type\n2026-03-14, 52.40, Groceries, Whole Foods, need\n2026-02-02, 1650, Housing, Rent, need\n2026-02-09, 24.00, Entertainment, Cinema, want"} />
+            <button type="button" className="btn ghost" onClick={parsePaste} disabled={!paste.trim()}>Parse rows</button>
+          </div>
+        )}
+
+        <div className="bulk-grid">
+          <div className="bulk-row bulk-head">
+            <span>Date</span><span>Merchant</span><span>Category</span><span>Amount</span><span>Type</span><span></span>
+          </div>
+          <div className="bulk-rows">
+            {rows.map((r, i) => {
+              const bad = (r.amount || r.merchant) && !rowValid(r);
+              return (
+                <div key={i} className={"bulk-row" + (bad ? " bad" : "")}>
+                  <input type="date" value={r.date} min={minStr} max={maxStr} onChange={(e) => update(i, "date", e.target.value)} />
+                  <input value={r.merchant} placeholder="Optional" onChange={(e) => update(i, "merchant", e.target.value)} />
+                  <div className="txv-select-wrap">
+                    <select value={r.cat} onChange={(e) => update(i, "cat", e.target.value)}>
+                      {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="bulk-amt">
+                    <span>$</span>
+                    <input inputMode="decimal" value={r.amount} placeholder="0.00"
+                      onChange={(e) => update(i, "amount", e.target.value.replace(/[^0-9.]/g, ""))} />
+                  </div>
+                  <div className="txv-select-wrap">
+                    <select value={r.need ? "need" : "want"} onChange={(e) => update(i, "need", e.target.value === "need")}>
+                      <option value="need">Need</option>
+                      <option value="want">Want</option>
+                    </select>
+                  </div>
+                  <button type="button" className="bulk-del" onClick={() => removeRow(i)} aria-label="Remove row">✕</button>
+                </div>
+              );
+            })}
+          </div>
+          <button type="button" className="bulk-addrow" onClick={addRow}>
+            <svg width="13" height="13" viewBox="0 0 14 14"><path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+            Add row
+          </button>
+        </div>
+
+        <div className="modal-foot">
+          <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>
+          <button type="button" className="btn primary" onClick={doInsert} disabled={valid.length === 0}>
+            Insert {valid.length} transaction{valid.length !== 1 ? "s" : ""}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+Object.assign(window, { BulkAdd });

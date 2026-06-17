@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+dist-ssr/
+
+# logs
+*.log
+npm-debug.log*
+
+# editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# local env
+*.local
+.env
+.env.*
+!.env.example
+
+# agent harness internals (not project code)
+.remember/
+.thumbnail
