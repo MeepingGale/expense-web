@@ -52,6 +52,7 @@ export interface RecurringItem {
   day: number;
   need: boolean;
   active?: boolean;
+  endKey?: string | null; // YYYY-MM end month, or null/undefined for ongoing
 }
 
 export interface Settings {
