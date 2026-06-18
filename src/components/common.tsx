@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import type { Category, CategoryId, Transaction, Settings, Attachment } from "../types";
+import type { Category, CategoryId, Transaction, Settings, Attachment, AddExpensePayload } from "../types";
 import { THEMES } from "../data/constants";
 import { catColor, fmtUSD, toDateInput, parseDateInput, ordinal, pad2 } from "../data/format";
 
@@ -19,7 +19,7 @@ interface TxDetailProps {
 interface AddExpenseProps {
   open: boolean;
   onClose: () => void;
-  onAdd: (tx: Transaction) => void;
+  onAdd: (payload: AddExpensePayload) => void;
   editTx: Transaction | null;
   defaultDate: string; minDate: string; maxDate: string;
   categories: Category[];
@@ -123,7 +123,7 @@ export function TxDetail({ tx, catById, onClose, onEdit, onDelete }: TxDetailPro
         </div>
 
         <div className="td-meta">
-          <div className="td-meta-row"><span>Date</span><b>{(tx as any).dateText}{(tx as any).weekday ? ` · ${(tx as any).weekday}` : ""}</b></div>
+          <div className="td-meta-row"><span>Date</span><b>{tx.dateText}{tx.weekday ? ` · ${tx.weekday}` : ""}</b></div>
           <div className="td-meta-row"><span>Category</span><b className="td-meta-cat"><i style={{ background: catColor(c.hue) }} />{c.name}</b></div>
           <div className="td-meta-row"><span>Type</span><b>{tx.need ? "Necessity" : "Discretionary"}</b></div>
           {tx.recurId && <div className="td-meta-row"><span>Recurring</span><b className="td-recur">↻ Monthly</b></div>}
@@ -175,7 +175,7 @@ export function TxDetail({ tx, catById, onClose, onEdit, onDelete }: TxDetailPro
 }
 
 export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate, maxDate, categories, catById }: AddExpenseProps) {
-  const seedDate = editTx ? `${(editTx as any).year}-${pad2((editTx as any).month + 1)}-${pad2(editTx.day)}` : defaultDate;
+  const seedDate = editTx ? `${editTx.year}-${pad2((editTx.month ?? 0) + 1)}-${pad2(editTx.day)}` : defaultDate;
   const [amount, setAmount] = useState<string>("");
   const [cat, setCat] = useState<string>(categories[0] ? categories[0].id : "");
   const [merchant, setMerchant] = useState<string>("");
@@ -194,9 +194,9 @@ export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate,
   useEffect(() => {
     if (open) {
       if (editTx) {
-        setAmount(String(Math.round((editTx as any).amount * 100) / 100)); setCat(editTx.cat); setMerchant(editTx.merchant);
-        setDate(`${(editTx as any).year}-${pad2((editTx as any).month + 1)}-${pad2(editTx.day)}`);
-        setNeed(editTx.need); setFiles((editTx.attachments || []) as Attachment[]);
+        setAmount(String(Math.round(editTx.amount * 100) / 100)); setCat(editTx.cat); setMerchant(editTx.merchant);
+        setDate(`${editTx.year}-${pad2((editTx.month ?? 0) + 1)}-${pad2(editTx.day)}`);
+        setNeed(editTx.need); setFiles(editTx.attachments || []);
       } else {
         const first = categories[0] ? categories[0].id : "";
         setAmount(""); setCat(first); setMerchant(""); setDate(defaultDate);
@@ -235,9 +235,9 @@ export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate,
       need, attachments: files,
       recurring: recurring ? { endKey: ongoing ? null : until } : null,
       _editId: editTx ? editTx.id : null,
-      _editKey: editTx ? (editTx as any).monthKey : null,
+      _editKey: editTx ? editTx.monthKey ?? null : null,
       recurId: editTx ? editTx.recurId : null,
-    } as any);
+    });
     onClose();
   };
   return (

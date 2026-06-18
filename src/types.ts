@@ -25,6 +25,31 @@ export interface Transaction {
   attachments?: Attachment[];
   monthKey?: string; // attached in delete flow
   _new?: boolean;    // transient UI flag
+  // Optional display/transient fields attached by App when opening a tx
+  // (openDetail) or seeding the edit form. Keep them optional so seed/
+  // storage data stays valid without them.
+  year?: number;
+  month?: number;    // 0-indexed
+  dateText?: string;
+  weekday?: string;
+}
+
+// What AddExpense.onAdd emits: a transaction-shaped object plus the transient
+// submit fields the form carries. App reads `_editId`/`_editKey`/`recurring`
+// to branch add-vs-edit and recurring linkage, then strips them.
+export interface AddExpensePayload {
+  year: number;
+  month: number; // 0-indexed
+  day: number;
+  cat: CategoryId;
+  amount: number;
+  merchant: string;
+  need: boolean;
+  attachments: Attachment[];
+  recurring: { endKey: string | null } | null;
+  recurId: string | null;
+  _editId: string | null;
+  _editKey: string | null;
 }
 
 export interface MonthData {

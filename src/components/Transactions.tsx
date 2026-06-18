@@ -179,7 +179,7 @@ export function Transactions({ months, categories, catById, onAddClick, onBulkCl
               const c = catById[tx.cat];
               if (!c) return null;
               const hasAtt = tx.attachments && tx.attachments.length > 0;
-              const open = () => onOpenTx({ ...tx, dateText: `${tx.monthLabel} ${tx.day}` } as Transaction);
+              const open = () => onOpenTx({ ...tx, dateText: `${tx.monthLabel} ${tx.day}` });
               return (
                 <div key={tx.id} className={"txv-row clickable" + (tx._new ? " is-new" : "")}
                   onClick={open} role="button" tabIndex={0}
