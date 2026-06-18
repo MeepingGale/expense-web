@@ -175,7 +175,7 @@ export function TxDetail({ tx, catById, onClose, onEdit, onDelete }: TxDetailPro
 }
 
 export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate, maxDate, categories, catById }: AddExpenseProps) {
-  const seedDate = editTx ? `${editTx.year}-${pad2((editTx.month ?? 0) + 1)}-${pad2(editTx.day)}` : defaultDate;
+  const seedDate = editTx ? `${editTx.year ?? 0}-${pad2((editTx.month ?? 0) + 1)}-${pad2(editTx.day)}` : defaultDate;
   const [amount, setAmount] = useState<string>("");
   const [cat, setCat] = useState<string>(categories[0] ? categories[0].id : "");
   const [merchant, setMerchant] = useState<string>("");
@@ -195,7 +195,7 @@ export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate,
     if (open) {
       if (editTx) {
         setAmount(String(Math.round(editTx.amount * 100) / 100)); setCat(editTx.cat); setMerchant(editTx.merchant);
-        setDate(`${editTx.year}-${pad2((editTx.month ?? 0) + 1)}-${pad2(editTx.day)}`);
+        setDate(`${editTx.year ?? 0}-${pad2((editTx.month ?? 0) + 1)}-${pad2(editTx.day)}`);
         setNeed(editTx.need); setFiles(editTx.attachments || []);
       } else {
         const first = categories[0] ? categories[0].id : "";

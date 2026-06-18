@@ -32,7 +32,7 @@ export function SettingsView({
     <div className="setv">
       <div className="setv-head">
         <h1>Settings</h1>
-        <p className="txv-sub">Configure your budget, currency, and data</p>
+        <p className="txv-sub">Configure your budget, currency, appearance, and data</p>
       </div>
 
       <section className="card setv-card">
