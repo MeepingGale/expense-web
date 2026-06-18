@@ -1,7 +1,23 @@
-/* Seeded, deterministic personal-budget data: 12 months ending June 2026.
-   Everything (KPIs, trend, donut, heatmap, transactions) derives from this. */
-(function () {
-  function mulberry32(a) {
+import type { Category, CategoryId, ExpenseData, MonthData, Transaction } from "../types";
+
+export function recompute(
+  month: Omit<MonthData, "byCat" | "byDay" | "total">,
+  categories: Category[],
+): MonthData {
+  const byCat: Record<CategoryId, number> = {};
+  categories.forEach((c) => (byCat[c.id] = 0));
+  const byDay: Record<number, number> = {};
+  let total = 0;
+  month.transactions.forEach((t) => {
+    byCat[t.cat] = (byCat[t.cat] ?? 0) + t.amount;
+    byDay[t.day] = (byDay[t.day] ?? 0) + t.amount;
+    total += t.amount;
+  });
+  return { ...month, byCat, byDay, total: Math.round(total * 100) / 100 };
+}
+
+export function buildSeed(): ExpenseData {
+  function mulberry32(a: number) {
     return function () {
       a |= 0; a = (a + 0x6D2B79F5) | 0;
       let t = Math.imul(a ^ (a >>> 15), 1 | a);
@@ -10,7 +26,7 @@
     };
   }
 
-  const CATEGORIES = [
+  const CATEGORIES: Category[] = [
     { id: "housing",    name: "Housing",       hue: 222, essential: true  },
     { id: "groceries",  name: "Groceries",     hue: 152, essential: true  },
     { id: "dining",     name: "Dining & Bars", hue: 22,  essential: false },
@@ -22,7 +38,7 @@
     { id: "subs",       name: "Subscriptions", hue: 258, essential: false },
   ];
 
-  const MERCHANTS = {
+  const MERCHANTS: Record<string, string[]> = {
     housing:   ["Maple Street Apartments"],
     groceries: ["Whole Foods", "Trader Joe's", "Safeway", "Corner Market", "Costco"],
     dining:    ["Blue Bottle", "Tacos El Sol", "Sushi Nori", "The Smoke House", "Olive & Vine", "Ramen Yama", "Pizzeria Bianco", "Night Owl Bar"],
@@ -34,13 +50,17 @@
     subs:      ["Netflix", "Spotify", "iCloud+", "NYT", "Adobe CC", "ChatGPT Plus"],
   };
 
-  function money(rng, lo, hi) { return Math.round((lo + rng() * (hi - lo)) * 100) / 100; }
-  function pick(rng, arr) { return arr[Math.floor(rng() * arr.length)]; }
+  function money(rng: () => number, lo: number, hi: number): number {
+    return Math.round((lo + rng() * (hi - lo)) * 100) / 100;
+  }
+  function pick(rng: () => number, arr: string[]): string {
+    return arr[Math.floor(rng() * arr.length)];
+  }
 
   const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
   // Build 12 months ending at June 2026 (index 5, year 2026).
-  const months = [];
+  const months: { year: number; month: number }[] = [];
   const endYear = 2026, endMonth = 5; // June
   for (let i = 11; i >= 0; i--) {
     let m = endMonth - i, y = endYear;
@@ -50,16 +70,16 @@
 
   const today = new Date(2026, 5, 8); // June 8, 2026
 
-  const data = months.map((mo, idx) => {
+  const data: MonthData[] = months.map((mo) => {
     const rng = mulberry32((mo.year * 100 + mo.month) * 7919 + 13);
     const daysInMonth = new Date(mo.year, mo.month + 1, 0).getDate();
     const isCurrent = mo.year === today.getFullYear() && mo.month === today.getMonth();
     const lastDay = isCurrent ? today.getDate() : daysInMonth;
     const seasonal = 1 + 0.16 * Math.sin((mo.month / 12) * Math.PI * 2 - 1) + (mo.month === 11 ? 0.22 : 0); // Dec bump
-    const tx = [];
+    const tx: Transaction[] = [];
     let uid = 0;
-    const catEssential = Object.fromEntries(CATEGORIES.map((c) => [c.id, c.essential]));
-    const add = (day, catId, amount, merchant, recurId) => {
+    const catEssential: Record<string, boolean> = Object.fromEntries(CATEGORIES.map((c) => [c.id, c.essential]));
+    const add = (day: number, catId: string, amount: number, merchant: string, recurId?: string) => {
       if (day < 1 || day > lastDay) return;
       const base = catEssential[catId];
       const need = rng() < 0.12 ? !base : base; // ~12% deviate from category default
@@ -69,7 +89,7 @@
     // Housing — 1st of month
     add(1, "housing", 1650, MERCHANTS.housing[0], "rent");
     // Subscriptions — fixed recurring on set days
-    [["Netflix", 5, 15.49], ["Spotify", 8, 11.99], ["iCloud+", 10, 2.99], ["Adobe CC", 12, 22.99], ["ChatGPT Plus", 18, 20], ["NYT", 22, 4]].forEach(([name, day, amt]) => add(day, "subs", amt, name, "sub-" + name));
+    ([ ["Netflix", 5, 15.49], ["Spotify", 8, 11.99], ["iCloud+", 10, 2.99], ["Adobe CC", 12, 22.99], ["ChatGPT Plus", 18, 20], ["NYT", 22, 4] ] as [string, number, number][]).forEach(([name, day, amt]) => add(day, "subs", amt, name, "sub-" + name));
     // Utilities — a few bills
     add(6, "utilities", money(rng, 70, 130), "PG&E");
     add(14, "utilities", money(rng, 35, 60), "City Water");
@@ -97,9 +117,9 @@
 
     tx.sort((a, b) => a.day - b.day || a.id.localeCompare(b.id));
 
-    const byCat = {};
+    const byCat: Record<string, number> = {};
     CATEGORIES.forEach((c) => (byCat[c.id] = 0));
-    const byDay = {};
+    const byDay: Record<number, number> = {};
     let total = 0;
     tx.forEach((t) => {
       byCat[t.cat] += t.amount;
@@ -125,9 +145,9 @@
     };
   });
 
-  window.EXPENSE = {
+  return {
     categories: CATEGORIES,
-    catById: Object.fromEntries(CATEGORIES.map((c) => [c.id, c])),
+    catById: Object.fromEntries(CATEGORIES.map((c) => [c.id, c])) as Record<CategoryId, Category>,
     months: data,
     today,
     monthlyBudget: 3800,
@@ -143,4 +163,4 @@
       { id: "sub-NYT",          merchant: "NYT",                     cat: "subs",    amount: 4,     day: 22, need: false },
     ],
   };
-})();
+}

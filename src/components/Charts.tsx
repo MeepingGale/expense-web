@@ -1,54 +1,23 @@
-/* Chart + viz components. Exports to window. SVG-based, theme-driven via CSS vars. */
+/* Chart + viz components. SVG-based, theme-driven via CSS vars. */
+import React, { useState } from "react";
+import { catColor, fmtUSD, fmtCompact } from "../data/format";
+import type { MonthData, CategoryId, Settings } from "../types";
 
-// ---- shared helpers ----
-const CURRENCIES = [
-  { code: "USD", symbol: "$",  decimals: 2, name: "US Dollar" },
-  { code: "EUR", symbol: "€",  decimals: 2, name: "Euro" },
-  { code: "GBP", symbol: "£",  decimals: 2, name: "British Pound" },
-  { code: "JPY", symbol: "¥",  decimals: 0, name: "Japanese Yen" },
-  { code: "INR", symbol: "₹",  decimals: 2, name: "Indian Rupee" },
-  { code: "CAD", symbol: "C$", decimals: 2, name: "Canadian Dollar" },
-  { code: "AUD", symbol: "A$", decimals: 2, name: "Australian Dollar" },
-];
-let _cur = CURRENCIES[0];
-function setLedgerCurrency(code) { const c = CURRENCIES.find((x) => x.code === code); if (c) _cur = c; }
-const fmtUSD = (n, cents) => {
-  const d = _cur.decimals === 0 ? 0 : (cents ? 2 : 0);
-  return _cur.symbol + Number(n).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
-};
-const fmtCompact = (n) =>
-  n >= 1000 ? _cur.symbol + (n / 1000).toFixed(n >= 10000 ? 0 : 1) + "k" : _cur.symbol + Math.round(n);
-const catColor = (hue, l = 0.68, c = 0.15) => `oklch(${l} ${c} ${hue})`;
-
-// width-measuring hook so SVG text never distorts
-function useSize() {
-  const ref = React.useRef(null);
-  const [size, setSize] = React.useState({ w: 0, h: 0 });
-  React.useLayoutEffect(() => {
-    if (!ref.current) return;
-    let rafId = 0, stopped = false;
-    const commit = (r) => setSize((prev) => (Math.abs(prev.w - r.width) > 0.5 || Math.abs(prev.h - r.height) > 0.5 ? { w: r.width, h: r.height } : prev));
-    // poll every frame until the grid-stretch + flex box reports a real width, however late it resolves
-    const poll = () => {
-      if (stopped || !ref.current) return;
-      const r = ref.current.getBoundingClientRect();
-      if (r.width > 0) commit(r);
-      else rafId = requestAnimationFrame(poll);
-    };
-    poll();
-    const measure = () => { if (ref.current) commit(ref.current.getBoundingClientRect()); };
-    const ro = new ResizeObserver(measure);
-    ro.observe(ref.current);
-    window.addEventListener("resize", measure);
-    return () => { stopped = true; if (rafId) cancelAnimationFrame(rafId); ro.disconnect(); window.removeEventListener("resize", measure); };
-  }, []);
-  const el = ref.current;
-  const w = size.w || (el ? el.clientWidth : 0);
-  const h = size.h || (el ? el.clientHeight : 0);
-  return [ref, w, h];
+interface TooltipProps { x: number; y: number; w?: number; children: React.ReactNode; }
+interface TrendChartProps {
+  months: MonthData[]; selectedIndex: number; onSelect: (i: number) => void;
+  accent: string; mode: Settings["trendMode"]; budget: number;
+}
+interface DonutSlice { id: CategoryId; name: string; hue: number; amount: number; }
+interface CategoryDonutProps {
+  items: DonutSlice[]; total: number;
+  hovered: CategoryId | null; onHover: (id: CategoryId | null) => void;
+}
+interface HeatmapProps {
+  month: MonthData; selectedDay: number | null; onSelectDay: (day: number | null) => void;
 }
 
-function Tooltip({ x, y, children, w }) {
+export function Tooltip({ x, y, children, w = 0 }: TooltipProps) {
   // x,y are in svg/px coords relative to container; flips to stay inside
   const flip = x > w - 130;
   return (
@@ -67,17 +36,17 @@ function Tooltip({ x, y, children, w }) {
 // ───────────────────────── Trend chart (12 months) ─────────────────────────
 // Fixed design-coordinate SVG stretched to fill via preserveAspectRatio="none".
 // No pixel measurement (rAF/ResizeObserver are unreliable in-preview), so it paints immediately.
-function TrendChart({ months, selectedIndex, onSelect, accent, mode, budget }) {
-  const [hover, setHover] = React.useState(null);
+export function TrendChart({ months, selectedIndex, onSelect, accent, mode, budget }: TrendChartProps) {
+  const [hover, setHover] = useState<number | null>(null);
   const DW = 1000, DH = 400, padT = 18, padB = 6;
   const innerH = DH - padT - padB;
   const vals = months.map((m) => m.total);
   const max = Math.max(budget * 1.05, ...vals) || 1;
-  const y = (v) => padT + innerH * (1 - v / max);
+  const y = (v: number) => padT + innerH * (1 - v / max);
   const band = months.length ? DW / months.length : 0;
-  const xc = (i) => band * i + band / 2;
-  const pctX = (i) => (xc(i) / DW) * 100;
-  const pctY = (v) => (y(v) / DH) * 100;
+  const xc = (i: number) => band * i + band / 2;
+  const pctX = (i: number) => (xc(i) / DW) * 100;
+  const pctY = (v: number) => (y(v) / DH) * 100;
 
   const linePts = months.map((m, i) => [xc(i), y(m.total)]);
   const pathD = linePts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
@@ -155,7 +124,7 @@ function TrendChart({ months, selectedIndex, onSelect, accent, mode, budget }) {
 }
 
 // ───────────────────────── Category donut ─────────────────────────
-function CategoryDonut({ items, total, hovered, onHover }) {
+export function CategoryDonut({ items, total, hovered, onHover }: CategoryDonutProps) {
   const size = 188, stroke = 26, r = (size - stroke) / 2, cx = size / 2, cy = size / 2;
   const circ = 2 * Math.PI * r;
   let acc = 0;
@@ -200,18 +169,18 @@ function CategoryDonut({ items, total, hovered, onHover }) {
 }
 
 // ───────────────────────── Calendar (daily spending) ─────────────────────────
-function Heatmap({ month, selectedDay, onSelectDay }) {
+export function Heatmap({ month, selectedDay, onSelectDay }: HeatmapProps) {
   const first = month.firstWeekday; // 0 Sun
   const days = month.daysInMonth;
-  const cells = [];
+  const cells: (number | null)[] = [];
   for (let i = 0; i < first; i++) cells.push(null);
   for (let d = 1; d <= days; d++) cells.push(d);
   while (cells.length % 7 !== 0) cells.push(null);
   const maxDay = Math.max(1, ...Object.values(month.byDay));
-  const txByDay = {};
+  const txByDay: Record<number, number> = {};
   month.transactions.forEach((t) => (txByDay[t.day] = (txByDay[t.day] || 0) + 1));
   const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const intensity = (v) => (v ? 0.2 + 0.8 * Math.pow(v / maxDay, 0.6) : 0);
+  const intensity = (v: number) => (v ? 0.2 + 0.8 * Math.pow(v / maxDay, 0.6) : 0);
 
   return (
     <div className="cal-wrap">
@@ -248,5 +217,3 @@ function Heatmap({ month, selectedDay, onSelectDay }) {
     </div>
   );
 }
-
-Object.assign(window, { fmtUSD, fmtCompact, catColor, useSize, TrendChart, CategoryDonut, Heatmap, CURRENCIES, setLedgerCurrency });

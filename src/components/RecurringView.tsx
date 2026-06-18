@@ -1,23 +1,52 @@
 /* Recurring expenses: add new, edit amount, stop / resume, set an end date. */
-const { useState: useStateRec, useEffect: useEffectRec } = React;
-const useState = useStateRec, useEffect = useEffectRec;
+import React, { useState, useEffect } from "react";
+import { catColor, fmtUSD } from "../data/format";
+import type { Category, CategoryId, RecurringItem } from "../types";
 
 const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const _pad2r = (n) => String(n).padStart(2, "0");
+const _pad2r = (n: number) => String(n).padStart(2, "0");
 
-function ordinalRec(n) {
+function ordinalRec(n: number): string {
   const s = ["th", "st", "nd", "rd"], v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
-function fmtEndKey(key) {
+function fmtEndKey(key: string | null | undefined): string | null {
   if (!key) return null;
   const [y, m] = key.split("-").map(Number);
   return `${MONTH_ABBR[m - 1]} ${y}`;
 }
 
-function RecurringRow({ item, catById, onEditAmount, onToggle }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(String(item.amount));
+// Payload App's addRecurring expects: it assigns `id` + `active` itself.
+type NewRecurring = Omit<RecurringItem, "id" | "active">;
+
+interface RecurringRowProps {
+  item: RecurringItem;
+  catById: Record<CategoryId, Category>;
+  onEditAmount: (id: string, amount: number) => void;
+  onToggle: (id: string) => void;
+}
+
+interface RecurringViewProps {
+  recurring: RecurringItem[];
+  catById: Record<CategoryId, Category>;
+  today: Date;
+  onEditAmount: (id: string, amount: number) => void;
+  onToggle: (id: string) => void;
+  onAddClick: () => void;
+}
+
+interface AddRecurringProps {
+  open: boolean;
+  today: Date;
+  onClose: () => void;
+  onAdd: (item: NewRecurring) => void;
+  categories: Category[];
+  catById: Record<CategoryId, Category>;
+}
+
+export function RecurringRow({ item, catById, onEditAmount, onToggle }: RecurringRowProps) {
+  const [editing, setEditing] = useState<boolean>(false);
+  const [draft, setDraft] = useState<string>(String(item.amount));
   const c = catById[item.cat] || { name: "Uncategorized", hue: 256 };
 
   const startEdit = () => { setDraft(String(item.amount)); setEditing(true); };
@@ -70,14 +99,13 @@ function RecurringRow({ item, catById, onEditAmount, onToggle }) {
   );
 }
 
-function RecurringView({ recurring, catById, onEditAmount, onToggle, onAddClick }) {
+export function RecurringView({ recurring, catById, today, onEditAmount, onToggle, onAddClick }: RecurringViewProps) {
   const active = recurring.filter((r) => r.active);
   const monthlyTotal = active.reduce((s, r) => s + r.amount, 0);
   const needTotal = active.filter((r) => r.need).reduce((s, r) => s + r.amount, 0);
 
   // forecast: next 3 months of committed recurring (respecting end dates)
-  const today = EXPENSE.today;
-  const forecast = [];
+  const forecast: { label: string; total: number; count: number }[] = [];
   for (let i = 1; i <= 3; i++) {
     const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
     const key = `${d.getFullYear()}-${_pad2r(d.getMonth() + 1)}`;
@@ -137,19 +165,18 @@ function RecurringView({ recurring, catById, onEditAmount, onToggle, onAddClick 
   );
 }
 
-function AddRecurring({ open, onClose, onAdd, categories, catById }) {
+export function AddRecurring({ open, today, onClose, onAdd, categories, catById }: AddRecurringProps) {
   const first = categories[0] ? categories[0].id : "";
-  const today = EXPENSE.today;
   const minMonth = `${today.getFullYear()}-${_pad2r(today.getMonth() + 1)}`;
   const maxMonth = `${today.getFullYear() + 10}-12`;
-  const [merchant, setMerchant] = useState("");
-  const [cat, setCat] = useState(first);
-  const [amount, setAmount] = useState("");
-  const [day, setDay] = useState(1);
-  const [need, setNeed] = useState(catById[first] ? catById[first].essential : true);
-  const [ongoing, setOngoing] = useState(true);
-  const [until, setUntil] = useState("");
-  const merchRef = React.useRef(null);
+  const [merchant, setMerchant] = useState<string>("");
+  const [cat, setCat] = useState<CategoryId>(first);
+  const [amount, setAmount] = useState<string>("");
+  const [day, setDay] = useState<number | string>(1);
+  const [need, setNeed] = useState<boolean>(catById[first] ? catById[first].essential : true);
+  const [ongoing, setOngoing] = useState<boolean>(true);
+  const [until, setUntil] = useState<string>("");
+  const merchRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -161,17 +188,17 @@ function AddRecurring({ open, onClose, onAdd, categories, catById }) {
   }, [open]);
 
   if (!open) return null;
-  const selectCat = (id) => { setCat(id); setNeed(catById[id] ? catById[id].essential : true); };
+  const selectCat = (id: CategoryId) => { setCat(id); setNeed(catById[id] ? catById[id].essential : true); };
   const valid = parseFloat(amount) > 0 && merchant.trim() && (ongoing || until);
 
-  const submit = (e) => {
+  const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!valid) return;
     onAdd({
       merchant: merchant.trim(),
       cat,
       amount: Math.round(parseFloat(amount) * 100) / 100,
-      day: Math.min(31, Math.max(1, parseInt(day) || 1)),
+      day: Math.min(31, Math.max(1, parseInt(String(day), 10) || 1)),
       need,
       endKey: ongoing ? null : until,
     });
@@ -251,5 +278,3 @@ function AddRecurring({ open, onClose, onAdd, categories, catById }) {
     </div>
   );
 }
-
-Object.assign(window, { RecurringView, AddRecurring });

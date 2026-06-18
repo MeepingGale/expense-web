@@ -1,0 +1,568 @@
+/* Main dashboard app — wires every ported module together. */
+import React, { useState, useMemo, useEffect } from "react";
+import type {
+  AddExpensePayload,
+  Category,
+  CategoryId,
+  MonthData,
+  RecurringItem,
+  Transaction,
+} from "./types";
+import { buildSeed, recompute } from "./data/seed";
+import { load, save, DEFAULT_SETTINGS } from "./data/storage";
+import { catColor, fmtUSD, setLedgerCurrency, pad2, toDateInput, ordinal } from "./data/format";
+import { CURRENCIES, WEEKDAYS } from "./data/constants";
+import { useSettings } from "./hooks/useSettings";
+import { Delta, Paperclip, KpiCard, ThemeMenu, TxDetail, AddExpense } from "./components/common";
+import { TrendChart, CategoryDonut, Heatmap } from "./components/Charts";
+import { Transactions } from "./components/Transactions";
+import { CategoriesView } from "./components/CategoriesView";
+import { RecurringView, AddRecurring } from "./components/RecurringView";
+import { BulkAdd } from "./components/BulkAdd";
+import { Insights } from "./components/Insights";
+import { ExportMenu, PrintReport } from "./components/Export";
+import { SettingsView } from "./components/SettingsView";
+
+// What BulkAdd.onInsert / routeInsert work with.
+interface InsertItem {
+  year: number;
+  month: number; // 0-indexed
+  day: number;
+  cat: CategoryId;
+  amount: number;
+  merchant: string;
+  need: boolean;
+  attachments?: Transaction["attachments"];
+  recurId?: string | null;
+}
+
+export default function App() {
+  const EXPENSE = useMemo(() => buildSeed(), []);
+  const stored = useMemo(() => load(), []);
+
+  const [t, setTweak] = useSettings(stored?.settings ?? DEFAULT_SETTINGS);
+
+  const [months, setMonths] = useState<MonthData[]>(() =>
+    EXPENSE.months.map((m) =>
+      recompute(
+        { ...m, transactions: stored?.txByMonth?.[m.key] ?? m.transactions },
+        stored?.categories ?? EXPENSE.categories,
+      ),
+    ),
+  );
+  const [idx, setIdx] = useState<number>(EXPENSE.currentIndex);
+  const [hoverCat, setHoverCat] = useState<CategoryId | null>(null);
+  const [filterCat, setFilterCat] = useState<CategoryId | null>(null);
+  const [adding, setAdding] = useState<boolean>(false);
+  const [bulk, setBulk] = useState<boolean>(false);
+  const [addingRecurring, setAddingRecurring] = useState<boolean>(false);
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [view, setView] = useState<string>("overview");
+  const [categories, setCategories] = useState<Category[]>(
+    stored?.categories ?? EXPENSE.categories.map((c) => ({ ...c })),
+  );
+  const [recurring, setRecurring] = useState<RecurringItem[]>(
+    stored?.recurring ?? EXPENSE.recurring.map((r) => ({ ...r, active: true })),
+  );
+  const [viewerTx, setViewerTx] = useState<Transaction | null>(null);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [txPage, setTxPage] = useState<number>(0);
+  const [budget, setBudget] = useState<number>(stored?.budget ?? EXPENSE.monthlyBudget);
+  const [currency, setCurrency] = useState<string>(stored?.currency ?? "USD");
+
+  const catById = useMemo(() => Object.fromEntries(categories.map((c) => [c.id, c])), [categories]);
+
+  const month = months[idx];
+  const prev = idx > 0 ? months[idx - 1] : null;
+
+  // keep format.ts's currency singleton in sync (and once on mount)
+  useEffect(() => { setLedgerCurrency(currency); }, [currency]);
+
+  // period-aware comparison: if current month is partial, compare same day-range of prev month
+  const cmp = useMemo<{ prevTotal: number | null; label: string | null }>(() => {
+    if (!prev) return { prevTotal: null, label: null };
+    if (month.isPartial) {
+      let s = 0;
+      for (let d = 1; d <= month.lastDay; d++) s += prev.byDay[d] || 0;
+      return { prevTotal: s, label: `vs ${prev.shortLabel} through the ${ordinal(month.lastDay)}` };
+    }
+    return { prevTotal: prev.total, label: `vs ${prev.shortLabel}` };
+  }, [month, prev]);
+
+  const totalDelta = cmp.prevTotal ? ((month.total - cmp.prevTotal) / cmp.prevTotal) * 100 : null;
+  const avgPerDay = month.total / month.lastDay;
+  const projected = month.isPartial ? (month.total / month.lastDay) * month.daysInMonth : month.total;
+
+  const catItems = useMemo(() =>
+    categories
+      .map((c) => ({ ...c, amount: month.byCat[c.id] || 0 }))
+      .filter((c) => c.amount > 0)
+      .sort((a, b) => b.amount - a.amount),
+    [month, categories]);
+  const topCat = catItems[0];
+
+  const budgetPct = Math.min(100, (month.total / budget) * 100);
+  const overBudget = month.total > budget;
+
+  // needs vs wants for the selected month
+  const nw = useMemo(() => {
+    let need = 0, want = 0, needCount = 0, wantCount = 0;
+    const needCat: Record<string, number> = {}, wantCat: Record<string, number> = {};
+    month.transactions.forEach((tx) => {
+      if (tx.need) { need += tx.amount; needCount++; needCat[tx.cat] = (needCat[tx.cat] || 0) + tx.amount; }
+      else { want += tx.amount; wantCount++; wantCat[tx.cat] = (wantCat[tx.cat] || 0) + tx.amount; }
+    });
+    const total = need + want || 1;
+    const topOf = (obj: Record<string, number>) => Object.entries(obj)
+      .map(([id, amt]) => ({ id, amt, cat: catById[id] }))
+      .filter((x) => x.cat).sort((a, b) => b.amt - a.amt).slice(0, 3);
+    return { need, want, needCount, wantCount,
+      needPct: Math.round((need / total) * 100), wantPct: Math.round((want / total) * 100),
+      topNeed: topOf(needCat), topWant: topOf(wantCat) };
+  }, [month, catById]);
+
+  const prevNeedPct = useMemo<number | null>(() => {
+    if (!prev) return null;
+    let n = 0, tt = 0;
+    prev.transactions.forEach((tx) => { tt += tx.amount; if (tx.need) n += tx.amount; });
+    return tt ? Math.round((n / tt) * 100) : null;
+  }, [prev]);
+
+  const openDetail = (tx: Transaction) => setViewerTx({
+    ...tx,
+    monthKey: month.key, year: month.year, month: month.month,
+    dateText: `${month.label} ${tx.day}`,
+    weekday: WEEKDAYS[new Date(month.year, month.month, tx.day).getDay()],
+  });
+
+  // date bounds for adding / back-dating (strings, per the new component contracts)
+  const minDate = useMemo(() => toDateInput(new Date(months[0].year, months[0].month, 1)), [months]);
+  const maxDate = useMemo(() => toDateInput(EXPENSE.today), [EXPENSE]);
+  const defaultDate = month.isCurrent
+    ? toDateInput(EXPENSE.today)
+    : toDateInput(new Date(month.year, month.month, month.daysInMonth));
+
+  const dayFilteredTx = useMemo(() => {
+    let list = month.transactions;
+    if (filterCat) list = list.filter((x) => x.cat === filterCat);
+    if (selectedDay) list = list.filter((x) => x.day === selectedDay);
+    return [...list].sort((a, b) => b.day - a.day || b.amount - a.amount);
+  }, [month, filterCat, selectedDay]);
+  const TX_PAGE = 5;
+  const txPageCount = Math.max(1, Math.ceil(dayFilteredTx.length / TX_PAGE));
+  const safePage = Math.min(txPage, txPageCount - 1);
+  const pagedTx = dayFilteredTx.slice(safePage * TX_PAGE, safePage * TX_PAGE + TX_PAGE);
+
+  // ----- category management -----
+  const addCategory = (cat: Category) => setCategories((prev) => [...prev, cat]);
+  const removeCategory = (id: CategoryId, reassignTo: CategoryId | null) => {
+    if (reassignTo) {
+      setMonths((prevM) => prevM.map((m) => {
+        if (!m.transactions.some((x) => x.cat === id)) return m;
+        const tx = m.transactions.map((x) => (x.cat === id ? { ...x, cat: reassignTo } : x));
+        return recompute({ ...m, transactions: tx }, categories);
+      }));
+    }
+    setCategories((prev) => prev.filter((c) => c.id !== id));
+    setFilterCat((f) => (f === id ? null : f));
+  };
+
+  // route transactions to the right month by date (supports back-dating + bulk)
+  const routeInsert = (items: InsertItem[]) => {
+    setMonths((prevM) => {
+      const touched: Record<number, MonthData> = {};
+      items.forEach((it) => {
+        const key = `${it.year}-${pad2(it.month + 1)}`;
+        const i = prevM.findIndex((m) => m.key === key);
+        if (i < 0) return;
+        if (!touched[i]) touched[i] = { ...prevM[i], transactions: [...prevM[i].transactions] };
+        touched[i].transactions.push({
+          id: `tx-${it.year}-${it.month}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          day: it.day, cat: it.cat, amount: it.amount, merchant: it.merchant,
+          need: it.need, attachments: it.attachments || [], recurId: it.recurId || null, _new: true,
+        });
+      });
+      return prevM.map((m, i) => (touched[i] ? recompute(touched[i], categories) : m));
+    });
+  };
+
+  const addExpense = (item: AddExpensePayload) => {
+    if (item._editId) {
+      saveTransaction(item._editId, item._editKey, item);
+      const i = months.findIndex((m) => m.key === `${item.year}-${pad2(item.month + 1)}`);
+      if (i >= 0) setIdx(i);
+      return;
+    }
+    let recurId: string | null = null;
+    if (item.recurring) {
+      recurId = `user-${Date.now()}`;
+      setRecurring((prev) => [...prev, { id: recurId!, merchant: item.merchant, cat: item.cat,
+        amount: item.amount, day: item.day, need: item.need, endKey: item.recurring!.endKey, active: true }]);
+    }
+    routeInsert([{ ...item, recurId }]);
+    const i = months.findIndex((m) => m.key === `${item.year}-${pad2(item.month + 1)}`);
+    if (i >= 0) setIdx(i);
+  };
+  const bulkInsert = (items: InsertItem[]) => routeInsert(items);
+
+  // edit / delete a transaction
+  const deleteTransaction = (id: string, key: string | undefined) => {
+    setMonths((prevM) => prevM.map((m) => (m.key === key
+      ? recompute({ ...m, transactions: m.transactions.filter((tx) => tx.id !== id) }, categories) : m)));
+  };
+  const saveTransaction = (id: string, oldKey: string | null, item: AddExpensePayload) => {
+    const newKey = `${item.year}-${pad2(item.month + 1)}`;
+    setMonths((prevM) => prevM.map((m) => {
+      let tx = m.transactions;
+      let changed = false;
+      if (m.key === oldKey) { tx = tx.filter((x) => x.id !== id); changed = true; }
+      if (m.key === newKey) {
+        tx = [...tx, { id, day: item.day, cat: item.cat, amount: item.amount, merchant: item.merchant,
+          need: item.need, attachments: item.attachments || [], recurId: item.recurId || null, _new: true }];
+        changed = true;
+      }
+      return changed ? recompute({ ...m, transactions: tx }, categories) : m;
+    }));
+  };
+
+  // add a brand-new recurring expense (from the Recurring tab)
+  const addRecurring = (item: Omit<RecurringItem, "id" | "active">) => {
+    const recurId = `user-${Date.now()}`;
+    setRecurring((prev) => [...prev, { id: recurId, ...item, active: true }]);
+    setMonths((prevM) => prevM.map((m) => {
+      if (!m.isCurrent) return m;
+      if (item.day <= m.lastDay && !m.transactions.some((tx) => tx.recurId === recurId)) {
+        return recompute({ ...m, transactions: [...m.transactions, {
+          id: `tx-${m.year}-${m.month}-${recurId}`, day: item.day, cat: item.cat, amount: item.amount,
+          merchant: item.merchant, need: item.need, attachments: [], recurId, _new: true }] }, categories);
+      }
+      return m;
+    }));
+  };
+
+  // ----- recurring management -----
+  const editRecurringAmount = (id: string, amount: number) => {
+    setRecurring((prev) => prev.map((r) => (r.id === id ? { ...r, amount } : r)));
+    setMonths((prevM) => prevM.map((m) => (m.isCurrent
+      ? recompute({ ...m, transactions: m.transactions.map((tx) => (tx.recurId === id ? { ...tx, amount, _new: true } : tx)) }, categories)
+      : m)));
+  };
+  const toggleRecurring = (id: string) => {
+    const rec = recurring.find((r) => r.id === id);
+    if (!rec) return;
+    const stopping = rec.active;
+    setRecurring((prev) => prev.map((r) => (r.id === id ? { ...r, active: !r.active } : r)));
+    setMonths((prevM) => prevM.map((m) => {
+      if (!m.isCurrent) return m;
+      if (stopping) {
+        return recompute({ ...m, transactions: m.transactions.filter((tx) => tx.recurId !== id) }, categories);
+      }
+      if (rec.day <= m.lastDay && !m.transactions.some((tx) => tx.recurId === id)) {
+        return recompute({ ...m, transactions: [...m.transactions, {
+          id: `tx-${m.year}-${m.month}-${id}-resume`, day: rec.day, cat: rec.cat, amount: rec.amount,
+          merchant: rec.merchant, need: rec.need, attachments: [], recurId: id, _new: true }] }, categories);
+      }
+      return m;
+    }));
+  };
+
+  // reset day selection on month change; reset pagination on any filter change
+  useEffect(() => { setSelectedDay(null); }, [idx]);
+  useEffect(() => { setTxPage(0); }, [selectedDay, filterCat, idx]);
+
+  // keyboard month nav
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (adding) return;
+      if (e.key === "ArrowLeft") setIdx((i) => Math.max(0, i - 1));
+      if (e.key === "ArrowRight") setIdx((i) => Math.min(months.length - 1, i + 1));
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [adding, months.length]);
+
+  // apply theme at document root so text color cascades from the top (robust across switches)
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", t.theme);
+    document.body.setAttribute("data-theme", t.theme);
+  }, [t.theme]);
+
+  // persist state (v2 — includes settings)
+  useEffect(() => {
+    const txByMonth: Record<string, Transaction[]> = {};
+    months.forEach((m) => { txByMonth[m.key] = m.transactions; });
+    save({ v: 2, txByMonth, categories, recurring, budget, currency, settings: t });
+  }, [months, categories, recurring, budget, currency, t]);
+
+  const changeCurrency = (code: string) => setCurrency(code);
+
+  const resetData = () => {
+    setMonths(EXPENSE.months.map((m) => recompute(m, EXPENSE.categories)));
+    setCategories(EXPENSE.categories.map((c) => ({ ...c })));
+    setRecurring(EXPENSE.recurring.map((r) => ({ ...r, active: true })));
+    setBudget(EXPENSE.monthlyBudget); setCurrency("USD");
+    setFilterCat(null); setViewerTx(null); setIdx(EXPENSE.currentIndex);
+  };
+
+  const rootStyle = { "--accent": t.accent } as React.CSSProperties;
+
+  return (
+    <div className="app" data-theme={t.theme} data-density={t.density} style={rootStyle}>
+      <header className="topbar">
+        <div className="tb-left">
+          <div className="brand">
+            <div className="logo" style={{ background: t.accent }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 18V8m5 10V5m5 13v-7m5 7V9" stroke="#fff" strokeWidth="2.4" strokeLinecap="round"/></svg>
+            </div>
+            <span className="brand-name">Ledger</span>
+          </div>
+          <nav className="nav-tabs">
+            <button className={view === "overview" ? "on" : ""} onClick={() => setView("overview")}>Overview</button>
+            <button className={view === "transactions" ? "on" : ""} onClick={() => setView("transactions")}>Transactions</button>
+            <button className={view === "recurring" ? "on" : ""} onClick={() => setView("recurring")}>Recurring</button>
+            <button className={view === "categories" ? "on" : ""} onClick={() => setView("categories")}>Categories</button>
+            <button className={view === "settings" ? "on" : ""} onClick={() => setView("settings")}>Settings</button>
+          </nav>
+        </div>
+
+        {view === "overview" && (
+          <div className="month-nav">
+            <button className="icon-btn" disabled={idx === 0} onClick={() => setIdx(idx - 1)} aria-label="Previous month">‹</button>
+            <div className="month-display">
+              <span className="month-title">{month.label}</span>
+              {month.isPartial && <span className="month-tag">in progress</span>}
+            </div>
+            <button className="icon-btn" disabled={idx === months.length - 1} onClick={() => setIdx(idx + 1)} aria-label="Next month">›</button>
+          </div>
+        )}
+
+        <div className="topbar-actions">
+          <ExportMenu months={months} catById={catById} onPrint={() => window.print()} />
+          <ThemeMenu theme={t.theme} onChange={(v) => setTweak("theme", v)} />
+          {view === "overview" && (
+            <>
+              <button className="btn ghost bulk-btn" onClick={() => setBulk(true)}>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2.5 4h11M2.5 8h11M2.5 12h7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg>
+                Bulk add
+              </button>
+              <button className="btn primary add-btn" onClick={() => setAdding(true)}>
+                <svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                Add expense
+              </button>
+            </>
+          )}
+        </div>
+      </header>
+
+      {view === "transactions" && (
+        <Transactions months={months} categories={categories} catById={catById}
+          onAddClick={() => setAdding(true)} onBulkClick={() => setBulk(true)} onOpenTx={openDetail} />
+      )}
+      {view === "recurring" && (
+        <RecurringView recurring={recurring} catById={catById}
+          onEditAmount={editRecurringAmount} onToggle={toggleRecurring} onAddClick={() => setAddingRecurring(true)}
+          today={EXPENSE.today} />
+      )}
+      {view === "categories" && (
+        <CategoriesView categories={categories} months={months}
+          onAdd={addCategory} onRemove={removeCategory} accent={t.accent} />
+      )}
+      {view === "settings" && (
+        <SettingsView budget={budget} onBudget={setBudget}
+          currency={currency} onCurrency={changeCurrency}
+          currencies={CURRENCIES} onReset={resetData} settings={t} onSetting={setTweak} />
+      )}
+      {view === "overview" && (
+      <main className="grid">
+        {/* KPI row */}
+        <KpiCard label="Total spent" value={fmtUSD(month.total)} delta={totalDelta ?? undefined} sub={cmp.label} />
+        <KpiCard label="Avg / day" value={fmtUSD(avgPerDay, true)} sub={`over ${month.lastDay} days`} />
+        <KpiCard label="Top category" value={topCat ? topCat.name : "—"} sub={topCat ? `${fmtUSD(topCat.amount)} · ${Math.round((topCat.amount / month.total) * 100)}%` : ""}>
+          {topCat && <span className="kpi-dot" style={{ background: catColor(topCat.hue) }} />}
+        </KpiCard>
+        <KpiCard label={month.isPartial ? "Projected vs budget" : "Spent vs budget"}
+          value={fmtUSD(month.isPartial ? projected : month.total)}
+          sub={overBudget ? `${fmtUSD(month.total - budget)} over` : `${fmtUSD(budget - month.total)} left of ${fmtUSD(budget)}`}>
+          <div className="budget-bar">
+            <div className="budget-fill" style={{ width: budgetPct + "%", background: overBudget ? "var(--danger)" : "var(--accent)" }} />
+            {month.isPartial && <div className="budget-proj" style={{ left: Math.min(100, (projected / budget) * 100) + "%" }} title="projected" />}
+          </div>
+        </KpiCard>
+
+        {/* Insights */}
+        <Insights month={month} months={months} idx={idx} catById={catById} budget={budget} />
+
+        {/* Trend */}
+        <section className="card span-trend">
+          <div className="card-head">
+            <div>
+              <h2>Monthly spending</h2>
+              <p className="card-sub">Last 12 months · click a bar to jump to that month</p>
+            </div>
+            <div className="seg-mini">
+              {(["bars", "line", "area"] as const).map((m) => (
+                <button key={m} className={t.trendMode === m ? "on" : ""} onClick={() => setTweak("trendMode", m)}>{m}</button>
+              ))}
+            </div>
+          </div>
+          <TrendChart months={months} selectedIndex={idx} onSelect={setIdx}
+            accent={t.accent} mode={t.trendMode} budget={t.budgetLine ? budget : 0} />
+        </section>
+
+        {/* Category breakdown */}
+        <section className="card span-cat">
+          <div className="card-head">
+            <div>
+              <h2>By category</h2>
+              <p className="card-sub">{month.shortLabel} {month.year}{filterCat ? " · filtered" : ""}</p>
+            </div>
+            {filterCat && <button className="clear-link" onClick={() => setFilterCat(null)}>clear filter</button>}
+          </div>
+          <div className="cat-body">
+            <CategoryDonut items={catItems} total={month.total} hovered={hoverCat || filterCat} onHover={setHoverCat} />
+            <div className="legend">
+              {catItems.map((c) => {
+                const pct = (c.amount / month.total) * 100;
+                const sel = filterCat === c.id;
+                return (
+                  <button key={c.id} className={"legend-row" + (sel ? " sel" : "")}
+                    onMouseEnter={() => setHoverCat(c.id)} onMouseLeave={() => setHoverCat(null)}
+                    onClick={() => setFilterCat(sel ? null : c.id)}>
+                    <i className="legend-dot" style={{ background: catColor(c.hue) }} />
+                    <span className="legend-name">{c.name}</span>
+                    <span className="legend-bar"><span style={{ width: pct + "%", background: catColor(c.hue) }} /></span>
+                    <span className="legend-amt">{fmtUSD(c.amount)}</span>
+                    <span className="legend-pct">{pct.toFixed(0)}%</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* Needs vs Wants */}
+        <section className="card span-needs">
+          <div className="card-head">
+            <div>
+              <h2>Needs vs Wants</h2>
+              <p className="card-sub">How essential was {month.shortLabel}’s spending</p>
+            </div>
+            {prevNeedPct != null && prev && (
+              <div className="nw-compare">
+                <Delta value={nw.needPct - prevNeedPct} />
+                <span>needs vs {prevNeedPct}% in {prev.shortLabel}</span>
+              </div>
+            )}
+          </div>
+          <div className="nw-bar">
+            <div className="nw-seg is-need" style={{ width: nw.needPct + "%" }}>
+              {nw.needPct >= 12 && <span>{nw.needPct}%</span>}
+            </div>
+            <div className="nw-seg is-want" style={{ width: nw.wantPct + "%" }}>
+              {nw.wantPct >= 12 && <span>{nw.wantPct}%</span>}
+            </div>
+          </div>
+          <div className="nw-grid">
+            {[{ k: "need", label: "Necessities", amt: nw.need, count: nw.needCount, top: nw.topNeed },
+              { k: "want", label: "Discretionary", amt: nw.want, count: nw.wantCount, top: nw.topWant }].map((b) => (
+              <div key={b.k} className="nw-detail">
+                <div className="nw-detail-head">
+                  <span className={"nw-dot is-" + b.k} />
+                  <span className="nw-detail-label">{b.label}</span>
+                </div>
+                <div className="nw-detail-amt">{fmtUSD(b.amt)}</div>
+                <div className="nw-detail-sub">{b.count} transaction{b.count !== 1 ? "s" : ""}</div>
+                <div className="nw-cats">
+                  {b.top.map((x) => (
+                    <span key={x.id} className="nw-cat-chip">
+                      <i style={{ background: catColor(x.cat.hue) }} />{x.cat.name}
+                      <em>{fmtUSD(x.amt)}</em>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Heatmap */}
+        <section className="card span-heat">
+          <div className="card-head">
+            <div>
+              <h2>Daily spending</h2>
+              <p className="card-sub">{selectedDay ? <><b className="cs-strong">{month.shortLabel} {selectedDay}</b> selected · <button className="clear-inline" onClick={() => setSelectedDay(null)}>clear</button></> : "Tap a day to filter transactions"}</p>
+            </div>
+            <div className="cal-nav">
+              <button className="icon-btn sm" disabled={idx === 0} onClick={() => setIdx(idx - 1)} aria-label="Previous month">‹</button>
+              <span className="cal-nav-label">{month.shortLabel} {month.year}</span>
+              <button className="icon-btn sm" disabled={idx === months.length - 1} onClick={() => setIdx(idx + 1)} aria-label="Next month">›</button>
+            </div>
+          </div>
+          <Heatmap month={month} selectedDay={selectedDay} onSelectDay={setSelectedDay} />
+        </section>
+
+        {/* Transactions */}
+        <section className="card span-tx">
+          <div className="card-head">
+            <div>
+              <h2>Transactions</h2>
+              <p className="card-sub">
+                {selectedDay ? <><b className="cs-strong">{month.shortLabel} {selectedDay}</b> · </> : ""}
+                {dayFilteredTx.length} {filterCat && catById[filterCat] ? catById[filterCat].name.toLowerCase() + " " : ""}item{dayFilteredTx.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+            {(filterCat || selectedDay) && <button className="clear-link" onClick={() => { setFilterCat(null); setSelectedDay(null); }}>show all</button>}
+          </div>
+          <div className="tx-list">
+            {pagedTx.map((tx) => {
+              const c = catById[tx.cat];
+              if (!c) return null;
+              const hasAtt = tx.attachments && tx.attachments.length > 0;
+              return (
+                <div key={tx.id} className={"tx-row clickable" + (tx._new ? " is-new" : "")}
+                  onClick={() => openDetail(tx)} role="button" tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDetail(tx); } }}>
+                  <span className="tx-dot" style={{ background: catColor(c.hue) }} />
+                  <div className="tx-main">
+                    <span className="tx-merchant">{tx.merchant}</span>
+                    <span className="tx-cat">{c.name}<span className={"need-tag " + (tx.need ? "is-need" : "is-want")}>{tx.need ? "Need" : "Want"}</span></span>
+                  </div>
+                  {hasAtt && tx.attachments && (
+                    <span className="att-badge" title={`${tx.attachments.length} attachment${tx.attachments.length > 1 ? "s" : ""}`}>
+                      <Paperclip size={12} />{tx.attachments.length}
+                    </span>
+                  )}
+                  <span className="tx-day">{month.shortLabel} {tx.day}</span>
+                  <span className="tx-amt">{fmtUSD(tx.amount, true)}</span>
+                </div>
+              );
+            })}
+            {dayFilteredTx.length === 0 && <div className="tx-empty">No transactions{selectedDay ? ` on ${month.shortLabel} ${selectedDay}` : ""}.</div>}
+          </div>
+          {txPageCount > 1 && (
+            <div className="tx-pager">
+              <button className="pager-btn" disabled={safePage === 0} onClick={() => setTxPage(safePage - 1)} aria-label="Previous page">‹</button>
+              <span className="pager-info">Page {safePage + 1} of {txPageCount}</span>
+              <button className="pager-btn" disabled={safePage >= txPageCount - 1} onClick={() => setTxPage(safePage + 1)} aria-label="Next page">›</button>
+            </div>
+          )}
+        </section>
+      </main>
+      )}
+
+      <AddExpense open={adding} onClose={() => setAdding(false)} onAdd={addExpense} editTx={null}
+        defaultDate={defaultDate} minDate={minDate} maxDate={maxDate} categories={categories} catById={catById} />
+      <AddExpense open={!!editingTx} editTx={editingTx} onClose={() => setEditingTx(null)} onAdd={addExpense}
+        defaultDate={defaultDate} minDate={minDate} maxDate={maxDate} categories={categories} catById={catById} />
+      <BulkAdd open={bulk} onClose={() => setBulk(false)} onInsert={bulkInsert}
+        categories={categories} catById={catById} minDate={minDate} maxDate={maxDate} />
+      <AddRecurring open={addingRecurring} onClose={() => setAddingRecurring(false)} onAdd={addRecurring}
+        categories={categories} catById={catById} today={EXPENSE.today} />
+      <TxDetail tx={viewerTx} catById={catById} onClose={() => setViewerTx(null)}
+        onEdit={(tx) => { setEditingTx(tx); setViewerTx(null); }}
+        onDelete={(tx) => { deleteTransaction(tx.id, tx.monthKey); setViewerTx(null); }} />
+
+      <PrintReport month={month} categories={categories} catById={catById} budget={budget} />
+    </div>
+  );
+}

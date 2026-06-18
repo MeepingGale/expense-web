@@ -1,5 +1,37 @@
 /* Auto-generated spending insights for the selected month. */
-function InsightIcon({ kind }) {
+import React, { useMemo } from "react";
+import { fmtUSD } from "../data/format";
+import type { Category, CategoryId, MonthData } from "../types";
+
+type InsightIconKind = "trend" | "star" | "alert" | "check" | "repeat";
+type InsightType = "warn" | "good" | "info";
+
+interface InsightIconProps {
+  kind: InsightIconKind;
+}
+
+interface InsightsProps {
+  month: MonthData;
+  months: MonthData[];
+  idx: number;
+  catById: Record<CategoryId, Category>;
+  budget: number;
+}
+
+interface InsightItem {
+  type: InsightType;
+  icon: InsightIconKind;
+  text: React.ReactNode;
+}
+
+interface BestCat {
+  cid: CategoryId;
+  pct: number;
+  cur: number;
+  avg: number;
+}
+
+export function InsightIcon({ kind }: InsightIconProps) {
   const p = {
     trend: <path d="M2 11l4-4 3 3 5-6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" fill="none"/>,
     star: <path d="M8 2l1.8 3.8 4.2.5-3.1 2.9.8 4.1L8 11.4 4.3 13.3l.8-4.1L2 6.3l4.2-.5z" fill="currentColor"/>,
@@ -10,21 +42,21 @@ function InsightIcon({ kind }) {
   return <svg width="16" height="16" viewBox="0 0 16 16">{p}</svg>;
 }
 
-function computeInsights({ month, months, idx, catById, budget }) {
-  const out = [];
+function computeInsights({ month, months, idx, catById, budget }: InsightsProps): InsightItem[] {
+  const out: InsightItem[] = [];
   const hist = months.slice(Math.max(0, idx - 3), idx);
 
   // category spike / dip vs trailing average
   if (hist.length) {
-    let best = null;
-    Object.keys(month.byCat).forEach((cid) => {
+    let best: BestCat | null = null;
+    for (const cid of Object.keys(month.byCat)) {
       const cur = month.byCat[cid] || 0;
-      if (cur < 30 || !catById[cid]) return;
+      if (cur < 30 || !catById[cid]) continue;
       const avg = hist.reduce((s, m) => s + (m.byCat[cid] || 0), 0) / hist.length;
-      if (avg < 20) return;
+      if (avg < 20) continue;
       const pct = ((cur - avg) / avg) * 100;
       if (!best || Math.abs(pct) > Math.abs(best.pct)) best = { cid, pct, cur, avg };
-    });
+    }
     if (best && Math.abs(best.pct) >= 20) {
       out.push({ type: best.pct > 0 ? "warn" : "good", icon: "trend",
         text: <><b>{catById[best.cid].name}</b> is {best.pct > 0 ? "up" : "down"} {Math.abs(Math.round(best.pct))}% vs your {hist.length}-month average — {fmtUSD(best.cur)} vs {fmtUSD(best.avg)}.</> });
@@ -49,7 +81,7 @@ function computeInsights({ month, months, idx, catById, budget }) {
   }
 
   // most frequent merchant
-  const freq = {};
+  const freq: Record<string, number> = {};
   month.transactions.forEach((tx) => { freq[tx.merchant] = (freq[tx.merchant] || 0) + 1; });
   const topM = Object.entries(freq).sort((a, b) => b[1] - a[1])[0];
   if (topM && topM[1] >= 3) {
@@ -60,8 +92,8 @@ function computeInsights({ month, months, idx, catById, budget }) {
   return out.slice(0, 4);
 }
 
-function Insights({ month, months, idx, catById, budget }) {
-  const items = React.useMemo(() => computeInsights({ month, months, idx, catById, budget }), [month, months, idx, catById, budget]);
+export function Insights({ month, months, idx, catById, budget }: InsightsProps) {
+  const items = useMemo(() => computeInsights({ month, months, idx, catById, budget }), [month, months, idx, catById, budget]);
   if (!items.length) return null;
   return (
     <section className="card span-insights">
@@ -82,5 +114,3 @@ function Insights({ month, months, idx, catById, budget }) {
     </section>
   );
 }
-
-Object.assign(window, { Insights });

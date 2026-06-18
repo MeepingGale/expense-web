@@ -1,21 +1,51 @@
 /* Full cross-month transaction browser: search, filter by month + category, sort. */
-const { useState: useStateTx, useMemo: useMemoTx } = React;
-const useState = useStateTx, useMemo = useMemoTx;
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+import React, { useState, useMemo } from "react";
+import { catColor, fmtUSD } from "../data/format";
+import { WEEKDAYS } from "../data/constants";
+import type { Category, CategoryId, MonthData, Transaction } from "../types";
 
-function TxIcon() {
+interface TransactionsProps {
+  months: MonthData[];
+  categories: Category[];
+  catById: Record<CategoryId, Category>;
+  onAddClick: () => void;
+  onBulkClick: () => void;
+  onOpenTx: (tx: Transaction) => void;
+}
+
+// transaction flattened with its month context (transient view-model fields)
+interface FlatTx extends Transaction {
+  mi: number;
+  year: number;
+  month: number;
+  monthKey: string;
+  monthLabel: string;
+  shortLabel: string;
+  weekday: string;
+}
+
+interface TxGroup {
+  key: string;
+  label?: string;
+  mi?: number;
+  rows: FlatTx[];
+  total?: number;
+  showMonth?: boolean;
+}
+
+export function TxIcon() {
   return <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5.2" stroke="currentColor" strokeWidth="1.6"/><path d="M11 11l3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>;
 }
 
-function Transactions({ months, categories, catById, onAddClick, onBulkClick, onOpenTx }) {
-  const [query, setQuery] = useState("");
-  const [range, setRange] = useState("all");
-  const [cats, setCats] = useState(() => new Set());
-  const [sort, setSort] = useState("newest");
+export function Transactions({ months, categories, catById, onAddClick, onBulkClick, onOpenTx }: TransactionsProps) {
+  const [query, setQuery] = useState<string>("");
+  const [range, setRange] = useState<string>("all");
+  const [cats, setCats] = useState<Set<CategoryId>>(() => new Set());
+  const [sort, setSort] = useState<string>("newest");
 
   // flatten every transaction with month context
-  const allTx = useMemo(() => {
-    const out = [];
+  const allTx = useMemo<FlatTx[]>(() => {
+    const out: FlatTx[] = [];
     months.forEach((m, mi) => {
       m.transactions.forEach((tx) => {
         out.push({
@@ -29,7 +59,7 @@ function Transactions({ months, categories, catById, onAddClick, onBulkClick, on
   }, [months]);
 
   const lastIdx = months.length - 1;
-  const filtered = useMemo(() => {
+  const filtered = useMemo<FlatTx[]>(() => {
     const q = query.trim().toLowerCase();
     return allTx.filter((tx) => {
       if (q && !tx.merchant.toLowerCase().includes(q) && !(catById[tx.cat] && catById[tx.cat].name.toLowerCase().includes(q))) return false;
@@ -50,23 +80,23 @@ function Transactions({ months, categories, catById, onAddClick, onBulkClick, on
   const byAmount = sort === "highest" || sort === "lowest";
 
   // grouped by month (date sorts) or flat (amount sorts)
-  const groups = useMemo(() => {
+  const groups = useMemo<TxGroup[]>(() => {
     if (byAmount) {
       const flat = [...filtered].sort((a, b) => sort === "highest" ? b.amount - a.amount : a.amount - b.amount);
       return [{ key: "__flat", rows: flat, showMonth: true }];
     }
-    const map = new Map();
+    const map = new Map<string, TxGroup>();
     filtered.forEach((tx) => {
       if (!map.has(tx.monthKey)) map.set(tx.monthKey, { key: tx.monthKey, label: tx.monthLabel, mi: tx.mi, rows: [], total: 0 });
-      const g = map.get(tx.monthKey);
-      g.rows.push(tx); g.total += tx.amount;
+      const g = map.get(tx.monthKey)!;
+      g.rows.push(tx); g.total = (g.total ?? 0) + tx.amount;
     });
-    const arr = [...map.values()].sort((a, b) => sort === "newest" ? b.mi - a.mi : a.mi - b.mi);
+    const arr = [...map.values()].sort((a, b) => sort === "newest" ? (b.mi ?? 0) - (a.mi ?? 0) : (a.mi ?? 0) - (b.mi ?? 0));
     arr.forEach((g) => g.rows.sort((a, b) => sort === "newest" ? b.day - a.day || b.amount - a.amount : a.day - b.day || b.amount - a.amount));
     return arr;
   }, [filtered, sort, byAmount]);
 
-  const toggleCat = (id) => setCats((prev) => {
+  const toggleCat = (id: CategoryId) => setCats((prev) => {
     const next = new Set(prev);
     next.has(id) ? next.delete(id) : next.add(id);
     return next;
@@ -134,7 +164,7 @@ function Transactions({ months, categories, catById, onAddClick, onBulkClick, on
         {stat.count === 0 && (
           <div className="txv-empty">
             <p>No transactions match your filters.</p>
-            {anyFilter && <button className="btn ghost" onClick={() => { setQuery(""); setRange("all"); setCats(new Set()); }}>Reset filters</button>}
+            {anyFilter ? <button className="btn ghost" onClick={() => { setQuery(""); setRange("all"); setCats(new Set()); }}>Reset filters</button> : null}
           </div>
         )}
         {groups.map((g) => (
@@ -142,7 +172,7 @@ function Transactions({ months, categories, catById, onAddClick, onBulkClick, on
             {g.key !== "__flat" && (
               <div className="txv-group-head">
                 <span className="txv-group-label">{g.label}</span>
-                <span className="txv-group-meta">{g.rows.length} item{g.rows.length !== 1 ? "s" : ""} · {fmtUSD(g.total)}</span>
+                <span className="txv-group-meta">{g.rows.length} item{g.rows.length !== 1 ? "s" : ""} · {fmtUSD(g.total ?? 0)}</span>
               </div>
             )}
             {g.rows.map((tx) => {
@@ -165,7 +195,7 @@ function Transactions({ months, categories, catById, onAddClick, onBulkClick, on
                     </span>
                     <span className="txv-cat"><i style={{ background: catColor(c.hue) }} />{c.name}</span>
                   </div>
-                  {hasAtt && (
+                  {hasAtt && tx.attachments && (
                     <span className="att-badge"
                       title={`${tx.attachments.length} attachment${tx.attachments.length > 1 ? "s" : ""}`}>
                       <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M11.5 5.5l-5 5a1.8 1.8 0 01-2.5-2.5l5.2-5.2a2.6 2.6 0 013.7 3.7L7.4 11.9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -183,5 +213,3 @@ function Transactions({ months, categories, catById, onAddClick, onBulkClick, on
     </div>
   );
 }
-
-Object.assign(window, { Transactions });

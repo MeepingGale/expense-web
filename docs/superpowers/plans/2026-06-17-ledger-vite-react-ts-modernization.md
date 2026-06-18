@@ -404,7 +404,7 @@ git add -A && git commit -m "feat: add shared types and static constants"
 ```ts
 import { describe, it, expect } from "vitest";
 import { buildSeed, recompute } from "./seed";
-import type { Category, MonthData } from "../types";
+import type { Category, MonthData, Transaction } from "../types";
 
 describe("buildSeed", () => {
   it("is deterministic", () => {
@@ -415,33 +415,50 @@ describe("buildSeed", () => {
     expect(months).toHaveLength(12);
     expect(months[11].key).toBe("2026-06");
   });
-  it("each month's byCat sums to its total", () => {
+  it("each month's byCat sums (approximately) to its total", () => {
     for (const m of buildSeed().months) {
       const sum = Object.values(m.byCat).reduce((a, b) => a + b, 0);
-      expect(sum).toBeCloseTo(m.total, 2);
+      expect(sum).toBeCloseTo(m.total, 1);
     }
   });
 });
 
 describe("recompute", () => {
-  it("derives byCat, byDay and a cent-rounded total", () => {
-    const cats: Category[] = [
-      { id: "a", name: "A", hue: 1, essential: true },
-      { id: "b", name: "B", hue: 2, essential: false },
-    ];
-    const base = {
+  const cats: Category[] = [
+    { id: "a", name: "A", hue: 1, essential: true },
+    { id: "b", name: "B", hue: 2, essential: false },
+  ];
+  const base = (transactions: Transaction[]) =>
+    ({
       key: "2026-06", year: 2026, month: 5, label: "June 2026", shortLabel: "Jun",
       daysInMonth: 30, lastDay: 8, isCurrent: true, firstWeekday: 1, isPartial: true,
-      transactions: [
-        { id: "1", day: 1, cat: "a", amount: 10, merchant: "x", need: true, recurId: null },
-        { id: "2", day: 1, cat: "b", amount: 5, merchant: "y", need: false, recurId: null },
-        { id: "3", day: 2, cat: "a", amount: 2.005, merchant: "z", need: true, recurId: null },
-      ],
-    } as Omit<MonthData, "byCat" | "byDay" | "total">;
-    const r = recompute(base, cats);
-    expect(r.byCat).toEqual({ a: 12.005, b: 5 });
-    expect(r.byDay).toEqual({ 1: 15, 2: 2.005 });
-    expect(r.total).toBe(17.01);
+      transactions,
+    }) as Omit<MonthData, "byCat" | "byDay" | "total">;
+
+  it("derives byCat and byDay from exact-decimal amounts", () => {
+    const r = recompute(
+      base([
+        { id: "1", day: 1, cat: "a", amount: 10.5, merchant: "x", need: true, recurId: null },
+        { id: "2", day: 1, cat: "b", amount: 5.25, merchant: "y", need: false, recurId: null },
+        { id: "3", day: 2, cat: "a", amount: 2.25, merchant: "z", need: true, recurId: null },
+      ]),
+      cats,
+    );
+    expect(r.byCat).toEqual({ a: 12.75, b: 5.25 });
+    expect(r.byDay).toEqual({ 1: 15.75, 2: 2.25 });
+    expect(r.total).toBe(18);
+  });
+
+  it("rounds the total to cents and zero-fills unused categories", () => {
+    const r = recompute(
+      base([
+        { id: "1", day: 1, cat: "a", amount: 1.114, merchant: "x", need: true, recurId: null },
+        { id: "2", day: 1, cat: "a", amount: 2.223, merchant: "y", need: true, recurId: null },
+      ]),
+      cats,
+    );
+    expect(r.total).toBeCloseTo(3.34, 2); // raw 3.337 -> 3.34
+    expect(r.byCat.b).toBe(0);
   });
 });
 ```

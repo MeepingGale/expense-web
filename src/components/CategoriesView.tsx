@@ -1,26 +1,35 @@
 /* Category manager: add / remove categories. Receives state via props from App. */
-const { useState: useStateCat, useMemo: useMemoCat } = React;
-const useState = useStateCat, useMemo = useMemoCat;
+import React, { useState, useMemo } from "react";
+import { catColor, fmtUSD } from "../data/format";
+import type { Category, CategoryId, MonthData } from "../types";
+
+interface CategoriesViewProps {
+  categories: Category[];
+  months: MonthData[];
+  onAdd: (cat: Category) => void;
+  onRemove: (id: CategoryId, reassignTo: CategoryId | null) => void;
+  accent: string;
+}
 
 const HUE_SWATCHES = [222, 196, 152, 120, 80, 48, 22, 8, 330, 300, 280, 258];
 
-function slugify(name, existing) {
+function slugify(name: string, existing: Set<CategoryId>): CategoryId {
   let base = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "cat";
   let id = base, n = 2;
   while (existing.has(id)) id = base + "-" + n++;
   return id;
 }
 
-function CategoriesView({ categories, months, onAdd, onRemove, accent }) {
-  const [name, setName] = useState("");
-  const [hue, setHue] = useState(120);
-  const [essential, setEssential] = useState(true);
-  const [confirmId, setConfirmId] = useState(null);
-  const [reassign, setReassign] = useState("");
+export function CategoriesView({ categories, months, onAdd, onRemove, accent }: CategoriesViewProps) {
+  const [name, setName] = useState<string>("");
+  const [hue, setHue] = useState<number>(120);
+  const [essential, setEssential] = useState<boolean>(true);
+  const [confirmId, setConfirmId] = useState<CategoryId | null>(null);
+  const [reassign, setReassign] = useState<CategoryId>("");
 
   // usage stats per category across all months
-  const usage = useMemo(() => {
-    const u = {};
+  const usage = useMemo<Record<CategoryId, { count: number; total: number }>>(() => {
+    const u: Record<CategoryId, { count: number; total: number }> = {};
     categories.forEach((c) => (u[c.id] = { count: 0, total: 0 }));
     months.forEach((m) => m.transactions.forEach((tx) => {
       if (u[tx.cat]) { u[tx.cat].count++; u[tx.cat].total += tx.amount; }
@@ -31,7 +40,7 @@ function CategoriesView({ categories, months, onAdd, onRemove, accent }) {
   const existingIds = useMemo(() => new Set(categories.map((c) => c.id)), [categories]);
   const usedHues = new Set(categories.map((c) => c.hue));
 
-  const submit = (e) => {
+  const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const nm = name.trim();
     if (!nm) return;
@@ -41,12 +50,13 @@ function CategoriesView({ categories, months, onAdd, onRemove, accent }) {
     if (nextHue != null) setHue(nextHue);
   };
 
-  const startRemove = (id) => {
+  const startRemove = (id: CategoryId) => {
     setConfirmId(id);
     const target = categories.find((c) => c.id !== id);
     setReassign(target ? target.id : "");
   };
   const confirmRemove = () => {
+    if (confirmId == null) return;
     const count = usage[confirmId] ? usage[confirmId].count : 0;
     onRemove(confirmId, count > 0 ? reassign : null);
     setConfirmId(null);
@@ -150,5 +160,3 @@ function CategoriesView({ categories, months, onAdd, onRemove, accent }) {
     </div>
   );
 }
-
-Object.assign(window, { CategoriesView });

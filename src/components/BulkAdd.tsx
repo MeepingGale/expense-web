@@ -1,25 +1,56 @@
 /* Bulk add transactions: paste-to-parse + editable grid, any date up to today. */
-const { useState: useStateBulk, useEffect: useEffectBulk, useMemo: useMemoBulk } = React;
-const useState = useStateBulk, useEffect = useEffectBulk, useMemo = useMemoBulk;
+import React, { useState, useEffect } from "react";
+import { fmtUSD, toDateInput } from "../data/format";
+import type { Category, CategoryId } from "../types";
 
-const _pad2 = (n) => String(n).padStart(2, "0");
-const _toInput = (d) => `${d.getFullYear()}-${_pad2(d.getMonth() + 1)}-${_pad2(d.getDate())}`;
-const _normalizeDate = (s) => {
+// Internal editable-row shape (amount is the raw string from the input).
+interface BulkEditRow {
+  date: string;
+  merchant: string;
+  cat: CategoryId;
+  amount: string;
+  need: boolean;
+}
+
+// Payload App's bulkInsert (routeInsert) expects: it assigns
+// `id` / `attachments` / `recurId` / `_new` itself.
+interface BulkInsertItem {
+  year: number;
+  month: number;
+  day: number;
+  cat: CategoryId;
+  amount: number;
+  merchant: string;
+  need: boolean;
+}
+
+interface BulkAddProps {
+  open: boolean;
+  onClose: () => void;
+  onInsert: (txs: BulkInsertItem[]) => void;
+  categories: Category[];
+  catById: Record<CategoryId, Category>;
+  minDate: string;
+  maxDate: string;
+}
+
+const _toInput = toDateInput;
+const _normalizeDate = (s: string): string | null => {
   s = String(s).trim();
-  let d;
+  let d: Date | undefined;
   if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)) { const [y, m, da] = s.split("-").map(Number); d = new Date(y, m - 1, da); }
-  else { const t = new Date(s); if (!isNaN(t)) d = t; }
-  if (!d || isNaN(d)) return null;
+  else { const t = new Date(s); if (!isNaN(t.getTime())) d = t; }
+  if (!d || isNaN(d.getTime())) return null;
   return _toInput(d);
 };
 
-function BulkAdd({ open, onClose, onInsert, categories, catById, minDate, maxDate }) {
-  const minStr = _toInput(minDate), maxStr = _toInput(maxDate);
+export function BulkAdd({ open, onClose, onInsert, categories, catById, minDate, maxDate }: BulkAddProps) {
+  const minStr = minDate, maxStr = maxDate;
   const firstCat = categories[0] ? categories[0].id : "";
-  const blank = () => ({ date: maxStr, merchant: "", cat: firstCat, amount: "", need: catById[firstCat] ? catById[firstCat].essential : true });
-  const [rows, setRows] = useState([]);
-  const [paste, setPaste] = useState("");
-  const [showPaste, setShowPaste] = useState(false);
+  const blank = (): BulkEditRow => ({ date: maxStr, merchant: "", cat: firstCat, amount: "", need: catById[firstCat] ? catById[firstCat].essential : true });
+  const [rows, setRows] = useState<BulkEditRow[]>([]);
+  const [paste, setPaste] = useState<string>("");
+  const [showPaste, setShowPaste] = useState<boolean>(false);
 
   useEffect(() => {
     if (open) { setRows([blank(), blank(), blank()]); setPaste(""); setShowPaste(false); }
@@ -27,7 +58,7 @@ function BulkAdd({ open, onClose, onInsert, categories, catById, minDate, maxDat
 
   if (!open) return null;
 
-  const matchCat = (str) => {
+  const matchCat = (str: string): CategoryId => {
     if (!str) return firstCat;
     const l = str.toLowerCase().trim();
     const hit = categories.find((c) => c.id === l || c.name.toLowerCase() === l) ||
@@ -35,20 +66,20 @@ function BulkAdd({ open, onClose, onInsert, categories, catById, minDate, maxDat
     return hit ? hit.id : firstCat;
   };
 
-  const update = (i, key, val) => setRows((prev) => prev.map((r, j) => {
+  const update = (i: number, key: keyof BulkEditRow, val: string | boolean) => setRows((prev) => prev.map((r, j) => {
     if (j !== i) return r;
     const next = { ...r, [key]: val };
-    if (key === "cat" && catById[val]) next.need = catById[val].essential;
+    if (key === "cat" && catById[val as CategoryId]) next.need = catById[val as CategoryId].essential;
     return next;
   }));
   const addRow = () => setRows((prev) => [...prev, blank()]);
-  const removeRow = (i) => setRows((prev) => prev.filter((_, j) => j !== i));
+  const removeRow = (i: number) => setRows((prev) => prev.filter((_, j) => j !== i));
 
   const parsePaste = () => {
     const NEED_WORDS = ["need", "needs", "necessity", "essential"];
     const WANT_WORDS = ["want", "wants", "discretionary", "non-essential", "nonessential"];
     const lines = paste.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-    const out = [];
+    const out: BulkEditRow[] = [];
     lines.forEach((line) => {
       const parts = line.split(/\t|,/).map((s) => s.trim());
       if (parts.length < 2) return;
@@ -58,7 +89,7 @@ function BulkAdd({ open, onClose, onInsert, categories, catById, minDate, maxDat
       if (!(amount > 0) || !date) return;
       const cat = matchCat(catStr);
       // optional trailing type column (need / want) — anything else stays part of the merchant
-      let need = null;
+      let need: boolean | null = null;
       if (rest.length) {
         const last = rest[rest.length - 1].toLowerCase();
         if (NEED_WORDS.includes(last)) { need = true; rest.pop(); }
@@ -70,12 +101,12 @@ function BulkAdd({ open, onClose, onInsert, categories, catById, minDate, maxDat
     if (out.length) { setRows((prev) => [...prev.filter((r) => r.amount || r.merchant), ...out]); setPaste(""); setShowPaste(false); }
   };
 
-  const rowValid = (r) => parseFloat(r.amount) > 0 && r.date >= minStr && r.date <= maxStr && catById[r.cat];
+  const rowValid = (r: BulkEditRow) => parseFloat(r.amount) > 0 && r.date >= minStr && r.date <= maxStr && !!catById[r.cat];
   const valid = rows.filter(rowValid);
   const validTotal = valid.reduce((s, r) => s + parseFloat(r.amount), 0);
 
   const doInsert = () => {
-    const items = valid.map((r) => {
+    const items: BulkInsertItem[] = valid.map((r) => {
       const [y, m, d] = r.date.split("-").map(Number);
       return { year: y, month: m - 1, day: d, cat: r.cat, amount: Math.round(parseFloat(r.amount) * 100) / 100,
         merchant: r.merchant.trim() || catById[r.cat].name, need: r.need };
@@ -158,5 +189,3 @@ function BulkAdd({ open, onClose, onInsert, categories, catById, minDate, maxDat
     </div>
   );
 }
-
-Object.assign(window, { BulkAdd });

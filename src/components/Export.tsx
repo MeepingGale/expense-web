@@ -1,8 +1,12 @@
 /* Export: CSV download of all transactions + a printable monthly PDF report. */
-const _pad2e = (n) => String(n).padStart(2, "0");
+import React, { useState } from "react";
+import { fmtUSD } from "../data/format";
+import type { Category, CategoryId, MonthData } from "../types";
 
-function exportCSV(months, catById) {
-  const rows = [["Date", "Merchant", "Category", "Amount", "Type", "Recurring"]];
+const _pad2e = (n: number) => String(n).padStart(2, "0");
+
+function exportCSV(months: MonthData[], catById: Record<CategoryId, Category>): void {
+  const rows: string[][] = [["Date", "Merchant", "Category", "Amount", "Type", "Recurring"]];
   months.forEach((m) => {
     [...m.transactions].sort((a, b) => a.day - b.day).forEach((tx) => {
       rows.push([
@@ -24,8 +28,14 @@ function exportCSV(months, catById) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function ExportMenu({ months, catById, onPrint }) {
-  const [open, setOpen] = React.useState(false);
+interface ExportMenuProps {
+  months: MonthData[];
+  catById: Record<CategoryId, Category>;
+  onPrint: () => void;
+}
+
+export function ExportMenu({ months, catById, onPrint }: ExportMenuProps) {
+  const [open, setOpen] = useState<boolean>(false);
   return (
     <div className="theme-menu">
       <button className="btn ghost export-btn" onClick={() => setOpen((o) => !o)}>
@@ -51,7 +61,14 @@ function ExportMenu({ months, catById, onPrint }) {
   );
 }
 
-function PrintReport({ month, categories, catById, budget }) {
+interface PrintReportProps {
+  month: MonthData;
+  categories: Category[];
+  catById: Record<CategoryId, Category>;
+  budget: number;
+}
+
+export function PrintReport({ month, categories, catById, budget }: PrintReportProps) {
   const catItems = categories
     .map((c) => ({ ...c, amount: month.byCat[c.id] || 0 }))
     .filter((c) => c.amount > 0)
@@ -114,5 +131,3 @@ function PrintReport({ month, categories, catById, budget }) {
     </div>
   );
 }
-
-Object.assign(window, { ExportMenu, PrintReport, exportCSV });
