@@ -1,8 +1,27 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      /* Pre-paint theme: apply the saved theme before React mounts so the page
+         doesn't flash the default theme on reload. Mirrors src/data/storage.ts
+         (STORAGE_KEY = "ledger-state-v1") and the Settings["theme"] union — keep
+         the key and the theme list below in sync with those. Falls back to the
+         static data-theme="dark" on <html> when storage is empty or corrupt. */
+      (function () {
+        try {
+          var raw = localStorage.getItem("ledger-state-v1");
+          if (!raw) return;
+          var theme = JSON.parse(raw).settings.theme;
+          if (["dark", "light", "carbon", "sand"].indexOf(theme) !== -1) {
+            document.documentElement.setAttribute("data-theme", theme);
+          }
+        } catch (e) {
+          /* keep the default data-theme="dark" */
+        }
+      })();
+    </script>
     <title>Ledger — Expense Tracker</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

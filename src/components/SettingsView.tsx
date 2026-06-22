@@ -131,18 +131,18 @@ export function SettingsView({
       <section className="card setv-card">
         <div className="setv-row">
           <div className="setv-label">
-            <h2>Reset data</h2>
-            <p>Discard your changes and restore the sample data.</p>
+            <h2>Clear all data</h2>
+            <p>Permanently delete every transaction and recurring item, and start fresh.</p>
           </div>
           <div className="setv-control">
             {confirmReset ? (
               <div className="setv-confirm">
                 <span>Are you sure?</span>
                 <button className="btn ghost" onClick={() => setConfirmReset(false)}>Cancel</button>
-                <button className="btn danger" onClick={() => { onReset(); setConfirmReset(false); }}>Reset</button>
+                <button className="btn danger" onClick={() => { onReset(); setConfirmReset(false); }}>Clear</button>
               </div>
             ) : (
-              <button className="btn ghost setv-reset" onClick={() => setConfirmReset(true)}>Reset to sample data</button>
+              <button className="btn ghost setv-reset" onClick={() => setConfirmReset(true)}>Clear all data</button>
             )}
           </div>
         </div>

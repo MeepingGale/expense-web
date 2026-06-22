@@ -131,3 +131,9 @@ export interface StoredStateV2 extends Omit<StoredStateV1, "v"> {
   v: 2;
   settings: Settings;
 }
+
+// Same shape as V2; the bump exists to trigger a one-time clear of the legacy
+// seeded sample data (transactions + recurring) on load. See data/storage.ts.
+export interface StoredStateV3 extends Omit<StoredStateV2, "v"> {
+  v: 3;
+}

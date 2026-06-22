@@ -11,11 +11,21 @@ describe("buildSeed", () => {
     expect(months).toHaveLength(12);
     expect(months[11].key).toBe("2026-06");
   });
-  it("each month's byCat sums (approximately) to its total", () => {
+  it("starts every month empty — no sample transactions", () => {
     for (const m of buildSeed().months) {
-      const sum = Object.values(m.byCat).reduce((a, b) => a + b, 0);
-      expect(sum).toBeCloseTo(m.total, 1);
+      expect(m.transactions).toHaveLength(0);
+      expect(m.total).toBe(0);
+      // byCat is zero-filled for every category, never undefined
+      expect(Object.values(m.byCat).every((v) => v === 0)).toBe(true);
     }
+  });
+  it("seeds no recurring items", () => {
+    expect(buildSeed().recurring).toEqual([]);
+  });
+  it("still provides the default starter categories", () => {
+    const ids = buildSeed().categories.map((c) => c.id);
+    expect(ids.length).toBeGreaterThan(0);
+    expect(ids).toContain("groceries");
   });
 });
 

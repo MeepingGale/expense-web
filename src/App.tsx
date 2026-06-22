@@ -287,11 +287,11 @@ export default function App() {
     document.body.setAttribute("data-theme", t.theme);
   }, [t.theme]);
 
-  // persist state (v2 — includes settings)
+  // persist state (v3 — settings + data; storage.ts migrates legacy v1/v2)
   useEffect(() => {
     const txByMonth: Record<string, Transaction[]> = {};
     months.forEach((m) => { txByMonth[m.key] = m.transactions; });
-    save({ v: 2, txByMonth, categories, recurring, budget, currency, settings: t });
+    save({ v: 3, txByMonth, categories, recurring, budget, currency, settings: t });
   }, [months, categories, recurring, budget, currency, t]);
 
   const changeCurrency = (code: string) => setCurrency(code);
