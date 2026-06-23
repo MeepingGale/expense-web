@@ -9,7 +9,6 @@ interface CategoriesViewProps {
   onAdd: (cat: Category) => void;
   onEdit: (id: CategoryId, patch: { name: string; hue: number; essential: boolean }) => void;
   onRemove: (id: CategoryId, reassignTo: CategoryId | null) => void;
-  accent: string;
 }
 
 const HUE_SWATCHES = [222, 196, 152, 120, 80, 48, 22, 8, 330, 300, 280, 258];
@@ -21,7 +20,7 @@ function slugify(name: string, existing: Set<CategoryId>): CategoryId {
   return id;
 }
 
-export function CategoriesView({ categories, months, onAdd, onEdit, onRemove, accent }: CategoriesViewProps) {
+export function CategoriesView({ categories, months, onAdd, onEdit, onRemove }: CategoriesViewProps) {
   const [name, setName] = useState<string>("");
   const [hue, setHue] = useState<number>(120);
   const [essential, setEssential] = useState<boolean>(true);

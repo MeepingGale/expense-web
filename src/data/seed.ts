@@ -1,4 +1,5 @@
 import type { Category, CategoryId, ExpenseData, MonthData } from "../types";
+import { MONTHS } from "./constants";
 
 export function recompute(
   month: Omit<MonthData, "byCat" | "byDay" | "total">,
@@ -31,8 +32,6 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: "subs",       name: "Subscriptions", hue: 258, essential: false },
 ];
 
-const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-
 // Builds the initial ledger state: an empty 12-month scaffold ending June 2026
 // plus default categories. There is no sample data — every month starts with
 // zero transactions and there are no recurring items, so the ledger opens
@@ -58,8 +57,8 @@ export function buildSeed(today: Date = new Date()): ExpenseData {
         key: `${mo.year}-${String(mo.month + 1).padStart(2, "0")}`,
         year: mo.year,
         month: mo.month,
-        label: `${MONTH_NAMES[mo.month]} ${mo.year}`,
-        shortLabel: MONTH_NAMES[mo.month].slice(0, 3),
+        label: `${MONTHS[mo.month]} ${mo.year}`,
+        shortLabel: MONTHS[mo.month].slice(0, 3),
         daysInMonth,
         lastDay,
         isCurrent,
@@ -73,7 +72,6 @@ export function buildSeed(today: Date = new Date()): ExpenseData {
 
   return {
     categories: DEFAULT_CATEGORIES,
-    catById: Object.fromEntries(DEFAULT_CATEGORIES.map((c) => [c.id, c])) as Record<CategoryId, Category>,
     months: data,
     today,
     monthlyBudget: 3800,

@@ -34,14 +34,13 @@ interface BulkAddProps {
   maxDate: string;
 }
 
-const _toInput = toDateInput;
 const _normalizeDate = (s: string): string | null => {
   s = String(s).trim();
   let d: Date | undefined;
   if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)) { const [y, m, da] = s.split("-").map(Number); d = new Date(y, m - 1, da); }
   else { const t = new Date(s); if (!isNaN(t.getTime())) d = t; }
   if (!d || isNaN(d.getTime())) return null;
-  return _toInput(d);
+  return toDateInput(d);
 };
 
 export function BulkAdd({ open, onClose, onInsert, categories, catById, minDate, maxDate }: BulkAddProps) {

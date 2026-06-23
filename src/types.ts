@@ -88,6 +88,9 @@ export interface Settings {
   budgetLine: boolean;
 }
 
+// Typed single-key setter for Settings (used by App + the settings/categories views).
+export type SetSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => void;
+
 export interface Currency {
   code: string;
   symbol: string;
@@ -110,7 +113,6 @@ export interface AccentOption {
 
 export interface ExpenseData {
   categories: Category[];
-  catById: Record<CategoryId, Category>;
   months: MonthData[];
   today: Date;
   monthlyBudget: number;

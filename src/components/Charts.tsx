@@ -3,7 +3,6 @@ import React, { useState } from "react";
 import { catColor, fmtUSD, fmtCompact } from "../data/format";
 import type { MonthData, CategoryId, Settings } from "../types";
 
-interface TooltipProps { x: number; y: number; w?: number; children: React.ReactNode; }
 interface TrendChartProps {
   months: MonthData[]; selectedIndex: number; onSelect: (i: number) => void;
   accent: string; mode: Settings["trendMode"]; budget: number;
@@ -15,22 +14,6 @@ interface CategoryDonutProps {
 }
 interface HeatmapProps {
   month: MonthData; selectedDay: number | null; onSelectDay: (day: number | null) => void;
-}
-
-export function Tooltip({ x, y, children, w = 0 }: TooltipProps) {
-  // x,y are in svg/px coords relative to container; flips to stay inside
-  const flip = x > w - 130;
-  return (
-    <div
-      className="chart-tip"
-      style={{
-        left: x, top: y,
-        transform: `translate(${flip ? "calc(-100% - 12px)" : "12px"}, -50%)`,
-      }}
-    >
-      {children}
-    </div>
-  );
 }
 
 // ───────────────────────── Trend chart (12 months) ─────────────────────────

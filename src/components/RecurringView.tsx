@@ -1,19 +1,13 @@
 /* Recurring expenses: add new, edit amount, stop / resume, set an end date. */
 import React, { useState, useEffect } from "react";
-import { catColor, fmtUSD, currencySymbol, groupDigits } from "../data/format";
+import { catColor, fmtUSD, currencySymbol, groupDigits, pad2, ordinal } from "../data/format";
+import { MONTHS } from "../data/constants";
 import type { Category, CategoryId, RecurringItem } from "../types";
 
-const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const _pad2r = (n: number) => String(n).padStart(2, "0");
-
-function ordinalRec(n: number): string {
-  const s = ["th", "st", "nd", "rd"], v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
-}
 function fmtEndKey(key: string | null | undefined): string | null {
   if (!key) return null;
   const [y, m] = key.split("-").map(Number);
-  return `${MONTH_ABBR[m - 1]} ${y}`;
+  return `${MONTHS[m - 1].slice(0, 3)} ${y}`;
 }
 
 // Payload App's addRecurring expects: it assigns `id` + `active` itself.
@@ -64,7 +58,7 @@ export function RecurringRow({ item, catById, onEditAmount, onToggle }: Recurrin
         <span className="rec-merchant">{item.merchant}
           <span className={"need-tag " + (item.need ? "is-need" : "is-want")}>{item.need ? "Need" : "Want"}</span>
         </span>
-        <span className="rec-meta">{c.name} · Monthly on the {ordinalRec(item.day)} · {end ? `until ${end}` : "ongoing"}</span>
+        <span className="rec-meta">{c.name} · Monthly on the {ordinal(item.day)} · {end ? `until ${end}` : "ongoing"}</span>
       </div>
 
       {item.active
@@ -108,9 +102,9 @@ export function RecurringView({ recurring, catById, today, onEditAmount, onToggl
   const forecast: { label: string; total: number; count: number }[] = [];
   for (let i = 1; i <= 3; i++) {
     const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
-    const key = `${d.getFullYear()}-${_pad2r(d.getMonth() + 1)}`;
+    const key = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
     const due = active.filter((r) => !r.endKey || r.endKey >= key);
-    forecast.push({ label: `${MONTH_ABBR[d.getMonth()]} ${d.getFullYear()}`, total: due.reduce((s, r) => s + r.amount, 0), count: due.length });
+    forecast.push({ label: `${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`, total: due.reduce((s, r) => s + r.amount, 0), count: due.length });
   }
   const fcMax = Math.max(1, ...forecast.map((f) => f.total));
 
@@ -167,7 +161,7 @@ export function RecurringView({ recurring, catById, today, onEditAmount, onToggl
 
 export function AddRecurring({ open, today, onClose, onAdd, categories, catById }: AddRecurringProps) {
   const first = categories[0] ? categories[0].id : "";
-  const minMonth = `${today.getFullYear()}-${_pad2r(today.getMonth() + 1)}`;
+  const minMonth = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}`;
   const maxMonth = `${today.getFullYear() + 10}-12`;
   const [merchant, setMerchant] = useState<string>("");
   const [cat, setCat] = useState<CategoryId>(first);

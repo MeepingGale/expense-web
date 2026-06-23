@@ -1,18 +1,19 @@
 /* Main dashboard app — wires every ported module together. */
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import type {
   AddExpensePayload,
   Category,
   CategoryId,
   MonthData,
   RecurringItem,
+  SetSetting,
+  Settings,
   Transaction,
 } from "./types";
 import { buildSeed, recompute } from "./data/seed";
 import { load, save, DEFAULT_SETTINGS } from "./data/storage";
 import { catColor, fmtUSD, setLedgerCurrency, pad2, toDateInput, ordinal } from "./data/format";
 import { CURRENCIES, WEEKDAYS } from "./data/constants";
-import { useSettings } from "./hooks/useSettings";
 import { Delta, Paperclip, KpiCard, ThemeMenu, TxDetail, AddExpense } from "./components/common";
 import { TrendChart, CategoryDonut, Heatmap } from "./components/Charts";
 import { Transactions } from "./components/Transactions";
@@ -40,7 +41,9 @@ export default function App() {
   const EXPENSE = useMemo(() => buildSeed(), []);
   const stored = useMemo(() => load(), []);
 
-  const [t, setTweak] = useSettings(stored?.settings ?? DEFAULT_SETTINGS);
+  const [t, setT] = useState<Settings>(stored?.settings ?? DEFAULT_SETTINGS);
+  const setTweak = useCallback<SetSetting>((key, value) =>
+    setT((prev) => ({ ...prev, [key]: value })), []);
 
   const [months, setMonths] = useState<MonthData[]>(() =>
     EXPENSE.months.map((m) =>
@@ -367,7 +370,7 @@ export default function App() {
       )}
       {view === "categories" && (
         <CategoriesView categories={categories} months={months}
-          onAdd={addCategory} onEdit={editCategory} onRemove={removeCategory} accent={t.accent} />
+          onAdd={addCategory} onEdit={editCategory} onRemove={removeCategory} />
       )}
       {view === "settings" && (
         <SettingsView budget={budget} onBudget={setBudget}
