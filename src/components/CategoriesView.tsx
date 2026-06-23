@@ -1,4 +1,4 @@
-/* Category manager: add / remove categories. Receives state via props from App. */
+/* Category manager: add / edit / remove categories. Receives state via props from App. */
 import React, { useState, useMemo } from "react";
 import { catColor, fmtUSD } from "../data/format";
 import type { Category, CategoryId, MonthData } from "../types";
@@ -7,6 +7,7 @@ interface CategoriesViewProps {
   categories: Category[];
   months: MonthData[];
   onAdd: (cat: Category) => void;
+  onEdit: (id: CategoryId, patch: { name: string; hue: number; essential: boolean }) => void;
   onRemove: (id: CategoryId, reassignTo: CategoryId | null) => void;
   accent: string;
 }
@@ -20,12 +21,13 @@ function slugify(name: string, existing: Set<CategoryId>): CategoryId {
   return id;
 }
 
-export function CategoriesView({ categories, months, onAdd, onRemove, accent }: CategoriesViewProps) {
+export function CategoriesView({ categories, months, onAdd, onEdit, onRemove, accent }: CategoriesViewProps) {
   const [name, setName] = useState<string>("");
   const [hue, setHue] = useState<number>(120);
   const [essential, setEssential] = useState<boolean>(true);
   const [confirmId, setConfirmId] = useState<CategoryId | null>(null);
   const [reassign, setReassign] = useState<CategoryId>("");
+  const [editId, setEditId] = useState<CategoryId | null>(null);
 
   // usage stats per category across all months
   const usage = useMemo<Record<CategoryId, { count: number; total: number }>>(() => {
@@ -40,14 +42,25 @@ export function CategoriesView({ categories, months, onAdd, onRemove, accent }: 
   const existingIds = useMemo(() => new Set(categories.map((c) => c.id)), [categories]);
   const usedHues = new Set(categories.map((c) => c.hue));
 
+  // The left panel doubles as add + edit, the same way AddExpense handles a new
+  // vs. an existing transaction. editId === null means "add"; otherwise "edit".
+  const resetForm = () => {
+    setEditId(null); setName(""); setEssential(true);
+    const nextHue = HUE_SWATCHES.find((h) => !usedHues.has(h));
+    if (nextHue != null) setHue(nextHue);
+  };
+  const startEdit = (c: Category) => {
+    setConfirmId(null);
+    setEditId(c.id); setName(c.name); setHue(c.hue); setEssential(c.essential);
+  };
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const nm = name.trim();
     if (!nm) return;
-    onAdd({ id: slugify(nm, existingIds), name: nm, hue, essential });
-    setName(""); setEssential(true);
-    const nextHue = HUE_SWATCHES.find((h) => !usedHues.has(h));
-    if (nextHue != null) setHue(nextHue);
+    // Editing keeps the same id, so existing transactions stay linked.
+    if (editId) onEdit(editId, { name: nm, hue, essential });
+    else onAdd({ id: slugify(nm, existingIds), name: nm, hue, essential });
+    resetForm();
   };
 
   const startRemove = (id: CategoryId) => {
@@ -59,6 +72,7 @@ export function CategoriesView({ categories, months, onAdd, onRemove, accent }: 
     if (confirmId == null) return;
     const count = usage[confirmId] ? usage[confirmId].count : 0;
     onRemove(confirmId, count > 0 ? reassign : null);
+    if (editId === confirmId) resetForm();
     setConfirmId(null);
   };
 
@@ -72,9 +86,9 @@ export function CategoriesView({ categories, months, onAdd, onRemove, accent }: 
       </div>
 
       <div className="catv-cols">
-        {/* add form */}
+        {/* add / edit form */}
         <form className="card catv-form" onSubmit={submit}>
-          <h2>New category</h2>
+          <h2>{editId ? "Edit category" : "New category"}</h2>
           <label className="field">
             <span>Name</span>
             <input value={name} placeholder="e.g. Travel, Pets, Gifts" maxLength={24}
@@ -103,10 +117,24 @@ export function CategoriesView({ categories, months, onAdd, onRemove, accent }: 
             <span className="catv-preview-label">Preview</span>
             <span className="cat-row-chip"><i style={{ background: catColor(hue) }} />{name.trim() || "Category name"}</span>
           </div>
-          <button type="submit" className="btn primary" disabled={!name.trim()} style={{ width: "100%", justifyContent: "center" }}>
-            <svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-            Add category
-          </button>
+          <div className="catv-form-actions">
+            {editId && (
+              <button type="button" className="btn ghost" onClick={resetForm} style={{ justifyContent: "center" }}>Cancel</button>
+            )}
+            <button type="submit" className="btn primary" disabled={!name.trim()} style={{ flex: 1, justifyContent: "center" }}>
+              {editId ? (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3.2L13 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  Save changes
+                </>
+              ) : (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                  Add category
+                </>
+              )}
+            </button>
+          </div>
         </form>
 
         {/* list */}
@@ -116,7 +144,7 @@ export function CategoriesView({ categories, months, onAdd, onRemove, accent }: 
             const confirming = confirmId === c.id;
             const others = categories.filter((x) => x.id !== c.id);
             return (
-              <div key={c.id} className={"cat-manage-row" + (confirming ? " confirming" : "")}>
+              <div key={c.id} className={"cat-manage-row" + (confirming ? " confirming" : "") + (editId === c.id ? " editing" : "")}>
                 <div className="cat-manage-main">
                   <span className="cat-swatch" style={{ background: catColor(c.hue) }} />
                   <div className="cat-manage-text">
@@ -127,10 +155,15 @@ export function CategoriesView({ categories, months, onAdd, onRemove, accent }: 
                       {u.count > 0 ? `${u.count} transaction${u.count !== 1 ? "s" : ""} · ${fmtUSD(u.total)}` : "No transactions yet"}
                     </span>
                   </div>
-                  <button className="cat-del-btn" onClick={() => startRemove(c.id)} disabled={categories.length <= 1}
-                    title={categories.length <= 1 ? "Keep at least one category" : "Remove"}>
-                    <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 4.5h10M6.5 4V3h3v1M5 4.5l.5 8h5l.5-8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </button>
+                  <div className="cat-manage-actions">
+                    <button className="cat-edit-btn" onClick={() => startEdit(c)} title="Edit category" aria-label={"Edit " + c.name}>
+                      <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M11.4 2.6a1.6 1.6 0 0 1 2.3 2.3L6 12.6l-3 .8.8-3 7.6-7.8z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </button>
+                    <button className="cat-del-btn" onClick={() => startRemove(c.id)} disabled={categories.length <= 1}
+                      title={categories.length <= 1 ? "Keep at least one category" : "Remove"} aria-label={"Remove " + c.name}>
+                      <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 4.5h10M6.5 4V3h3v1M5 4.5l.5 8h5l.5-8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </button>
+                  </div>
                 </div>
                 {confirming && (
                   <div className="cat-confirm">

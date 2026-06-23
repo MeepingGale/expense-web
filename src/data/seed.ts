@@ -37,12 +37,10 @@ const MONTH_NAMES = ["January","February","March","April","May","June","July","A
 // plus default categories. There is no sample data — every month starts with
 // zero transactions and there are no recurring items, so the ledger opens
 // clean and the user enters their own expenses.
-export function buildSeed(): ExpenseData {
-  const today = new Date(2026, 5, 8); // June 8, 2026
-
-  // 12 consecutive months ending at June 2026 (index 11, the current month).
+export function buildSeed(today: Date = new Date()): ExpenseData {
+  // 12 consecutive months ending at the current (real) month — index 11.
   const months: { year: number; month: number }[] = [];
-  const endYear = 2026, endMonth = 5; // June
+  const endYear = today.getFullYear(), endMonth = today.getMonth();
   for (let i = 11; i >= 0; i--) {
     let m = endMonth - i, y = endYear;
     while (m < 0) { m += 12; y -= 1; }

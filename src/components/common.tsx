@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import type { Category, CategoryId, Transaction, Settings, Attachment, AddExpensePayload } from "../types";
 import { THEMES } from "../data/constants";
-import { catColor, fmtUSD, toDateInput, parseDateInput, ordinal, pad2 } from "../data/format";
+import { catColor, fmtUSD, toDateInput, parseDateInput, ordinal, pad2, currencySymbol } from "../data/format";
 
 // ---- Prop interfaces ----
 
@@ -250,7 +250,7 @@ export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate,
         <label className="field amount-field">
           <span>Amount</span>
           <div className="amount-input">
-            <span className="dollar">$</span>
+            <span className="dollar">{currencySymbol()}</span>
             <input ref={amtRef} inputMode="decimal" value={amount} placeholder="0.00"
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))} />
           </div>

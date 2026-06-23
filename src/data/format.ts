@@ -23,6 +23,9 @@ export function setLedgerCurrency(code: string): void {
   const c = CURRENCIES.find((x) => x.code === code);
   if (c) _cur = c;
 }
+// Current currency symbol — for amount-input prefixes so they track the
+// selected currency (display only; never converts the underlying value).
+export const currencySymbol = (): string => _cur.symbol;
 export const fmtUSD = (n: number, cents?: boolean): string => {
   const d = _cur.decimals === 0 ? 0 : cents ? 2 : 0;
   return _cur.symbol + Number(n).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });

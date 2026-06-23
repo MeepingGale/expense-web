@@ -155,6 +155,8 @@ export default function App() {
 
   // ----- category management -----
   const addCategory = (cat: Category) => setCategories((prev) => [...prev, cat]);
+  const editCategory = (id: CategoryId, patch: { name: string; hue: number; essential: boolean }) =>
+    setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
   const removeCategory = (id: CategoryId, reassignTo: CategoryId | null) => {
     if (reassignTo) {
       setMonths((prevM) => prevM.map((m) => {
@@ -365,7 +367,7 @@ export default function App() {
       )}
       {view === "categories" && (
         <CategoriesView categories={categories} months={months}
-          onAdd={addCategory} onRemove={removeCategory} accent={t.accent} />
+          onAdd={addCategory} onEdit={editCategory} onRemove={removeCategory} accent={t.accent} />
       )}
       {view === "settings" && (
         <SettingsView budget={budget} onBudget={setBudget}

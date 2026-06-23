@@ -1,6 +1,6 @@
 /* Recurring expenses: add new, edit amount, stop / resume, set an end date. */
 import React, { useState, useEffect } from "react";
-import { catColor, fmtUSD } from "../data/format";
+import { catColor, fmtUSD, currencySymbol } from "../data/format";
 import type { Category, CategoryId, RecurringItem } from "../types";
 
 const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -75,7 +75,7 @@ export function RecurringRow({ item, catById, onEditAmount, onToggle }: Recurrin
         {editing ? (
           <div className="rec-edit">
             <div className="amount-input rec-edit-input">
-              <span className="dollar">$</span>
+              <span className="dollar">{currencySymbol()}</span>
               <input autoFocus inputMode="decimal" value={draft}
                 onChange={(e) => setDraft(e.target.value.replace(/[^0-9.]/g, ""))}
                 onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }} />
@@ -224,7 +224,7 @@ export function AddRecurring({ open, today, onClose, onAdd, categories, catById 
           <label className="field amount-field">
             <span>Amount</span>
             <div className="amount-input">
-              <span className="dollar">$</span>
+              <span className="dollar">{currencySymbol()}</span>
               <input inputMode="decimal" value={amount} placeholder="0.00"
                 onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))} />
             </div>

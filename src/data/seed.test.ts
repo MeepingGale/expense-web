@@ -2,17 +2,27 @@ import { describe, it, expect } from "vitest";
 import { buildSeed, recompute } from "./seed";
 import type { Category, MonthData, Transaction } from "../types";
 
+const TODAY = new Date(2026, 5, 23); // fixed reference so assertions stay deterministic
+
 describe("buildSeed", () => {
-  it("is deterministic", () => {
-    expect(buildSeed()).toEqual(buildSeed());
+  it("is deterministic for a given today", () => {
+    expect(buildSeed(TODAY)).toEqual(buildSeed(TODAY));
   });
-  it("produces 12 months ending June 2026", () => {
-    const { months } = buildSeed();
+  it("produces 12 months ending the month of `today`", () => {
+    const { months } = buildSeed(TODAY);
     expect(months).toHaveLength(12);
     expect(months[11].key).toBe("2026-06");
   });
+  it("never scaffolds past today — the current month stops at today's date", () => {
+    const { months, today } = buildSeed(TODAY);
+    expect(today).toEqual(TODAY);
+    const current = months[11];
+    expect(current.isCurrent).toBe(true);
+    expect(current.lastDay).toBe(23); // June has 30 days, but no future days are generated
+    expect(current.isPartial).toBe(true);
+  });
   it("starts every month empty — no sample transactions", () => {
-    for (const m of buildSeed().months) {
+    for (const m of buildSeed(TODAY).months) {
       expect(m.transactions).toHaveLength(0);
       expect(m.total).toBe(0);
       // byCat is zero-filled for every category, never undefined
@@ -20,10 +30,10 @@ describe("buildSeed", () => {
     }
   });
   it("seeds no recurring items", () => {
-    expect(buildSeed().recurring).toEqual([]);
+    expect(buildSeed(TODAY).recurring).toEqual([]);
   });
   it("still provides the default starter categories", () => {
-    const ids = buildSeed().categories.map((c) => c.id);
+    const ids = buildSeed(TODAY).categories.map((c) => c.id);
     expect(ids.length).toBeGreaterThan(0);
     expect(ids).toContain("groceries");
   });

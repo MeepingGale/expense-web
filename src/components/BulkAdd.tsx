@@ -1,6 +1,6 @@
 /* Bulk add transactions: paste-to-parse + editable grid, any date up to today. */
 import React, { useState, useEffect } from "react";
-import { fmtUSD, toDateInput } from "../data/format";
+import { fmtUSD, toDateInput, currencySymbol } from "../data/format";
 import type { Category, CategoryId } from "../types";
 
 // Internal editable-row shape (amount is the raw string from the input).
@@ -158,7 +158,7 @@ export function BulkAdd({ open, onClose, onInsert, categories, catById, minDate,
                     </select>
                   </div>
                   <div className="bulk-amt">
-                    <span>$</span>
+                    <span>{currencySymbol()}</span>
                     <input inputMode="decimal" value={r.amount} placeholder="0.00"
                       onChange={(e) => update(i, "amount", e.target.value.replace(/[^0-9.]/g, ""))} />
                   </div>

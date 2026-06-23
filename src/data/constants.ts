@@ -17,6 +17,7 @@ export const ACCENTS: AccentOption[] = [
 
 export const CURRENCIES: Currency[] = [
   { code: "USD", symbol: "$",  decimals: 2, name: "US Dollar" },
+  { code: "MYR", symbol: "RM", decimals: 2, name: "Malaysian Ringgit" },
   { code: "EUR", symbol: "€",  decimals: 2, name: "Euro" },
   { code: "GBP", symbol: "£",  decimals: 2, name: "British Pound" },
   { code: "JPY", symbol: "¥",  decimals: 0, name: "Japanese Yen" },
