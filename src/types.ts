@@ -1,10 +1,17 @@
 export type CategoryId = string;
 
+export interface SubCategory {
+  id: string;
+  name: string;
+  hue: number;
+  essential: boolean; // default need/want for new transactions in this sub
+}
+
 export interface Category {
   id: CategoryId;
   name: string;
-  hue: number;
-  essential: boolean;
+  hue: number; // auto-assigned for the chart; color is edited on sub-categories
+  subs: SubCategory[];
 }
 
 export interface Attachment {
@@ -18,6 +25,7 @@ export interface Transaction {
   id: string;
   day: number;
   cat: CategoryId;
+  subcat?: string | null; // sub-category id; null/undefined = unassigned (all legacy data)
   amount: number;
   merchant: string;
   need: boolean;
@@ -42,6 +50,7 @@ export interface AddExpensePayload {
   month: number; // 0-indexed
   day: number;
   cat: CategoryId;
+  subcat: string | null;
   amount: number;
   merchant: string;
   need: boolean;
@@ -138,4 +147,10 @@ export interface StoredStateV2 extends Omit<StoredStateV1, "v"> {
 // seeded sample data (transactions + recurring) on load. See data/storage.ts.
 export interface StoredStateV3 extends Omit<StoredStateV2, "v"> {
   v: 3;
+}
+
+// v4 adds sub-categories: Category gains `subs`, Transaction gains `subcat`.
+// Existing data migrates with empty subs / null subcat.
+export interface StoredStateV4 extends Omit<StoredStateV3, "v"> {
+  v: 4;
 }

@@ -11,6 +11,7 @@ interface DonutSlice { id: CategoryId; name: string; hue: number; amount: number
 interface CategoryDonutProps {
   items: DonutSlice[]; total: number;
   hovered: CategoryId | null; onHover: (id: CategoryId | null) => void;
+  centerLabel?: string; swapKey?: string; onSelect?: (id: CategoryId) => void;
 }
 interface HeatmapProps {
   month: MonthData; selectedDay: number | null; onSelectDay: (day: number | null) => void;
@@ -107,7 +108,7 @@ export function TrendChart({ months, selectedIndex, onSelect, accent, mode, budg
 }
 
 // ───────────────────────── Category donut ─────────────────────────
-export function CategoryDonut({ items, total, hovered, onHover }: CategoryDonutProps) {
+export function CategoryDonut({ items, total, hovered, onHover, centerLabel, swapKey, onSelect }: CategoryDonutProps) {
   const size = 188, stroke = 26, r = (size - stroke) / 2, cx = size / 2, cy = size / 2;
   const circ = 2 * Math.PI * r;
   let acc = 0;
@@ -117,7 +118,7 @@ export function CategoryDonut({ items, total, hovered, onHover }: CategoryDonutP
     <div className="donut-wrap">
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--grid)" strokeWidth={stroke} />
-        <g transform={`rotate(-90 ${cx} ${cy})`}>
+        <g key={swapKey} className="donut-segs" transform={`rotate(-90 ${cx} ${cy})`}>
           {items.map((it) => {
             const frac = it.amount / total;
             const len = Math.max(0, (frac - gap) * circ);
@@ -130,13 +131,13 @@ export function CategoryDonut({ items, total, hovered, onHover }: CategoryDonutP
                 stroke={catColor(it.hue)} strokeWidth={hovered === it.id ? stroke + 5 : stroke}
                 strokeDasharray={dash} strokeDashoffset={offset} strokeLinecap="butt"
                 opacity={dim ? 0.32 : 1}
-                onMouseEnter={() => onHover(it.id)} onMouseLeave={() => onHover(null)}
+                onMouseEnter={() => onHover(it.id)} onMouseLeave={() => onHover(null)} onClick={() => onSelect?.(it.id)}
                 style={{ transition: "opacity .2s, stroke-width .15s", cursor: "pointer" }} />
             );
           })}
         </g>
         <text x={cx} y={cy - 6} textAnchor="middle" className="donut-center-label">
-          {active ? active.name : "Total spent"}
+          {active ? active.name : (centerLabel ?? "Total spent")}
         </text>
         <text x={cx} y={cy + 18} textAnchor="middle" className="donut-center-value">
           {active ? fmtUSD(active.amount) : fmtUSD(total)}

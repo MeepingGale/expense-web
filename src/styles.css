@@ -499,6 +499,45 @@ body{
 .cat-confirm-actions{display:flex;gap:9px;margin-left:auto}
 .cat-confirm .btn{padding:7px 14px;font-size:13px}
 
+/* categories v2: main cards holding sub-category rows */
+.catv-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.catv-addmain{display:flex;gap:8px}
+.catv-addmain input{appearance:none;background:var(--card-2);border:1px solid var(--border-strong);border-radius:9px;padding:9px 12px;font:inherit;color:var(--text);width:210px}
+.catv-addmain input:focus{border-color:var(--accent);outline:none}
+.catv-mains{display:flex;flex-direction:column;gap:12px}
+.catv-main{padding:14px 16px}
+.catv-main.confirming{box-shadow:0 0 0 1px var(--accent)}
+.catv-main-head{display:flex;align-items:center;gap:11px}
+.catv-main-name{appearance:none;background:transparent;border:0;cursor:pointer;font-family:"Space Grotesk";font-weight:600;font-size:16px;color:var(--text);padding:2px 4px;border-radius:6px}
+.catv-main-name:hover{background:var(--card-2)}
+.catv-rename{flex:0 1 240px;appearance:none;background:var(--card-2);border:1px solid var(--accent);border-radius:8px;padding:6px 9px;font:inherit;color:var(--text)}
+.catv-main-usage{font-size:12px;color:var(--text-faint);font-variant-numeric:tabular-nums;margin-right:auto;margin-left:2px}
+.catv-subs{display:flex;flex-direction:column;gap:7px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.catv-sub{display:flex;align-items:center;gap:10px}
+.catv-sub-name{font-size:14px;font-weight:500;flex:1;min-width:0}
+.catv-nosubs{font-size:12.5px;color:var(--text-faint)}
+.cat-swatch.sm{width:11px;height:11px;border-radius:4px}
+.cat-edit-btn.sm,.cat-del-btn.sm{width:28px;height:28px;border-radius:7px}
+.catv-addsub{align-self:flex-start;appearance:none;background:transparent;border:1px dashed var(--border-strong);border-radius:9px;color:var(--text-dim);cursor:pointer;font:inherit;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;padding:7px 12px}
+.catv-addsub:hover{color:var(--text);border-color:var(--accent)}
+.catv-subform{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card-2);border:1px solid var(--border);border-radius:11px;padding:11px}
+.catv-subname{flex:1 1 150px;min-width:120px;appearance:none;background:var(--card);border:1px solid var(--border-strong);border-radius:8px;padding:8px 10px;font:inherit;color:var(--text)}
+.catv-subname:focus{border-color:var(--accent);outline:none}
+.catv-subhues{display:grid;grid-template-columns:repeat(12,16px);gap:5px}
+.hue-swatch.sm{width:16px;height:16px;border-radius:6px}
+.need-toggle.sm{flex:0 0 auto}
+.need-toggle.sm button{padding:7px 12px;font-size:12.5px}
+.catv-subform-actions{display:flex;gap:8px;margin-left:auto}
+.catv-subform-actions .btn{padding:7px 13px;font-size:13px}
+
+/* donut drill-down: fade the segments in on main<->sub swap (opacity only so
+   the group's rotate transform is untouched) */
+.donut-segs{animation:donutSwap .4s ease}
+@keyframes donutSwap{from{opacity:0}to{opacity:1}}
+.legend-row.static{cursor:default}
+.legend-row.static:hover{background:transparent}
+.legend-empty{font-size:12.5px;color:var(--text-faint);padding:8px 4px}
+
 /* ---------- topbar actions / bulk / recurring ---------- */
 .topbar-actions{display:flex;gap:9px;align-items:center;flex-shrink:0}
 .theme-menu{position:relative;display:flex}
@@ -536,7 +575,7 @@ body{
 .bulk-paste textarea:focus{border-color:var(--accent)}
 .bulk-paste .btn{align-self:flex-start}
 .bulk-grid{border:1px solid var(--border);border-radius:12px;padding:6px;overflow-x:auto}
-.bulk-row{display:grid;grid-template-columns:150px minmax(120px,1fr) 130px 112px 90px 30px;gap:8px;align-items:center;min-width:600px}
+.bulk-row{display:grid;grid-template-columns:144px minmax(110px,1fr) 124px 124px 104px 84px 28px;gap:8px;align-items:center;min-width:720px}
 .bulk-head{padding:6px 4px 8px}
 .bulk-head span{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint)}
 .bulk-rows{display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto}

@@ -21,15 +21,15 @@ export function recompute(
 // fresh ledger needs at least one category so the Add-expense flow has
 // something to select. Users can add/remove these in the Categories tab.
 const DEFAULT_CATEGORIES: Category[] = [
-  { id: "housing",    name: "Housing",       hue: 222, essential: true  },
-  { id: "groceries",  name: "Groceries",     hue: 152, essential: true  },
-  { id: "dining",     name: "Dining & Bars", hue: 22,  essential: false },
-  { id: "transport",  name: "Transport",     hue: 280, essential: true  },
-  { id: "shopping",   name: "Shopping",      hue: 330, essential: false },
-  { id: "utilities",  name: "Utilities",     hue: 196, essential: true  },
-  { id: "health",     name: "Health",        hue: 8,   essential: true  },
-  { id: "fun",        name: "Entertainment", hue: 48,  essential: false },
-  { id: "subs",       name: "Subscriptions", hue: 258, essential: false },
+  { id: "housing",    name: "Housing",       hue: 222, subs: [] },
+  { id: "groceries",  name: "Groceries",     hue: 152, subs: [] },
+  { id: "dining",     name: "Dining & Bars", hue: 22,  subs: [] },
+  { id: "transport",  name: "Transport",     hue: 280, subs: [] },
+  { id: "shopping",   name: "Shopping",      hue: 330, subs: [] },
+  { id: "utilities",  name: "Utilities",     hue: 196, subs: [] },
+  { id: "health",     name: "Health",        hue: 8,   subs: [] },
+  { id: "fun",        name: "Entertainment", hue: 48,  subs: [] },
+  { id: "subs",       name: "Subscriptions", hue: 258, subs: [] },
 ];
 
 // Builds the initial ledger state: an empty 12-month scaffold ending June 2026

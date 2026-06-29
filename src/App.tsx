@@ -30,6 +30,7 @@ interface InsertItem {
   month: number; // 0-indexed
   day: number;
   cat: CategoryId;
+  subcat?: string | null;
   amount: number;
   merchant: string;
   need: boolean;
@@ -104,6 +105,26 @@ export default function App() {
     [month, categories]);
   const topCat = catItems[0];
 
+  // donut drill-down: top level shows main categories; selecting one (filterCat)
+  // shows that category's sub-category breakdown (with an "Unassigned" bucket for
+  // legacy / sub-less transactions).
+  const donutData = useMemo(() => {
+    if (!filterCat) return { items: catItems, total: month.total, label: "Total spent" };
+    const main = catById[filterCat];
+    if (!main) return { items: catItems, total: month.total, label: "Total spent" };
+    const bySub: Record<string, number> = {};
+    month.transactions.forEach((tx) => {
+      if (tx.cat !== filterCat) return;
+      bySub[tx.subcat ?? "__none"] = (bySub[tx.subcat ?? "__none"] || 0) + tx.amount;
+    });
+    const items = main.subs
+      .map((s) => ({ id: s.id, name: s.name, hue: s.hue, amount: bySub[s.id] || 0 }))
+      .filter((it) => it.amount > 0);
+    if (bySub["__none"]) items.push({ id: "__none", name: "Unassigned", hue: 256, amount: bySub["__none"] });
+    items.sort((a, b) => b.amount - a.amount);
+    return { items, total: month.byCat[filterCat] || 0, label: main.name };
+  }, [filterCat, catItems, month, catById]);
+
   const budgetPct = Math.min(100, (month.total / budget) * 100);
   const overBudget = month.total > budget;
 
@@ -140,9 +161,11 @@ export default function App() {
 
   // date bounds for adding / back-dating (strings, per the new component contracts)
   const minDate = useMemo(() => toDateInput(new Date(months[0].year, months[0].month, 1)), [months]);
-  const maxDate = useMemo(() => toDateInput(EXPENSE.today), [EXPENSE]);
+  // ponytail: live, not frozen at mount — a long-open tab must still cap the
+  // date picker at the *real* today, not the day the app first loaded.
+  const maxDate = toDateInput(new Date());
   const defaultDate = month.isCurrent
-    ? toDateInput(EXPENSE.today)
+    ? toDateInput(new Date())
     : toDateInput(new Date(month.year, month.month, month.daysInMonth));
 
   const dayFilteredTx = useMemo(() => {
@@ -158,13 +181,13 @@ export default function App() {
 
   // ----- category management -----
   const addCategory = (cat: Category) => setCategories((prev) => [...prev, cat]);
-  const editCategory = (id: CategoryId, patch: { name: string; hue: number; essential: boolean }) =>
+  const editCategory = (id: CategoryId, patch: Partial<Pick<Category, "name" | "subs">>) =>
     setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
   const removeCategory = (id: CategoryId, reassignTo: CategoryId | null) => {
     if (reassignTo) {
       setMonths((prevM) => prevM.map((m) => {
         if (!m.transactions.some((x) => x.cat === id)) return m;
-        const tx = m.transactions.map((x) => (x.cat === id ? { ...x, cat: reassignTo } : x));
+        const tx = m.transactions.map((x) => (x.cat === id ? { ...x, cat: reassignTo, subcat: null } : x));
         return recompute({ ...m, transactions: tx }, categories);
       }));
     }
@@ -183,7 +206,7 @@ export default function App() {
         if (!touched[i]) touched[i] = { ...prevM[i], transactions: [...prevM[i].transactions] };
         touched[i].transactions.push({
           id: `tx-${it.year}-${it.month}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          day: it.day, cat: it.cat, amount: it.amount, merchant: it.merchant,
+          day: it.day, cat: it.cat, subcat: it.subcat ?? null, amount: it.amount, merchant: it.merchant,
           need: it.need, attachments: it.attachments || [], recurId: it.recurId || null, _new: true,
         });
       });
@@ -222,7 +245,7 @@ export default function App() {
       let changed = false;
       if (m.key === oldKey) { tx = tx.filter((x) => x.id !== id); changed = true; }
       if (m.key === newKey) {
-        tx = [...tx, { id, day: item.day, cat: item.cat, amount: item.amount, merchant: item.merchant,
+        tx = [...tx, { id, day: item.day, cat: item.cat, subcat: item.subcat ?? null, amount: item.amount, merchant: item.merchant,
           need: item.need, attachments: item.attachments || [], recurId: item.recurId || null, _new: true }];
         changed = true;
       }
@@ -296,7 +319,7 @@ export default function App() {
   useEffect(() => {
     const txByMonth: Record<string, Transaction[]> = {};
     months.forEach((m) => { txByMonth[m.key] = m.transactions; });
-    save({ v: 3, txByMonth, categories, recurring, budget, currency, settings: t });
+    save({ v: 4, txByMonth, categories, recurring, budget, currency, settings: t });
   }, [months, categories, recurring, budget, currency, t]);
 
   const changeCurrency = (code: string) => setCurrency(code);
@@ -419,20 +442,21 @@ export default function App() {
           <div className="card-head">
             <div>
               <h2>By category</h2>
-              <p className="card-sub">{month.shortLabel} {month.year}{filterCat ? " · filtered" : ""}</p>
+              <p className="card-sub">{filterCat && catById[filterCat] ? `${catById[filterCat].name} · sub-categories` : `${month.shortLabel} ${month.year}`}</p>
             </div>
-            {filterCat && <button className="clear-link" onClick={() => setFilterCat(null)}>clear filter</button>}
+            {filterCat && <button className="clear-link" onClick={() => setFilterCat(null)}>‹ all categories</button>}
           </div>
           <div className="cat-body">
-            <CategoryDonut items={catItems} total={month.total} hovered={hoverCat || filterCat} onHover={setHoverCat} />
+            <CategoryDonut items={donutData.items} total={donutData.total} centerLabel={donutData.label}
+              swapKey={filterCat ?? "main"} hovered={hoverCat}
+              onHover={setHoverCat} onSelect={(id) => { if (!filterCat) setFilterCat(id); }} />
             <div className="legend">
-              {catItems.map((c) => {
-                const pct = (c.amount / month.total) * 100;
-                const sel = filterCat === c.id;
+              {donutData.items.map((c) => {
+                const pct = donutData.total ? (c.amount / donutData.total) * 100 : 0;
                 return (
-                  <button key={c.id} className={"legend-row" + (sel ? " sel" : "")}
+                  <button key={c.id} className={"legend-row" + (filterCat ? " static" : "")}
                     onMouseEnter={() => setHoverCat(c.id)} onMouseLeave={() => setHoverCat(null)}
-                    onClick={() => setFilterCat(sel ? null : c.id)}>
+                    onClick={() => { if (!filterCat) setFilterCat(c.id); }}>
                     <i className="legend-dot" style={{ background: catColor(c.hue) }} />
                     <span className="legend-name">{c.name}</span>
                     <span className="legend-bar"><span style={{ width: pct + "%", background: catColor(c.hue) }} /></span>
@@ -441,6 +465,7 @@ export default function App() {
                   </button>
                 );
               })}
+              {filterCat && donutData.items.length === 0 && <div className="legend-empty">No sub-category spending in {catById[filterCat]?.name}.</div>}
             </div>
           </div>
         </section>

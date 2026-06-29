@@ -159,7 +159,7 @@ export function RecurringView({ recurring, catById, today, onEditAmount, onToggl
   );
 }
 
-export function AddRecurring({ open, today, onClose, onAdd, categories, catById }: AddRecurringProps) {
+export function AddRecurring({ open, today, onClose, onAdd, categories }: AddRecurringProps) {
   const first = categories[0] ? categories[0].id : "";
   const minMonth = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}`;
   const maxMonth = `${today.getFullYear() + 10}-12`;
@@ -167,7 +167,7 @@ export function AddRecurring({ open, today, onClose, onAdd, categories, catById 
   const [cat, setCat] = useState<CategoryId>(first);
   const [amount, setAmount] = useState<string>("");
   const [day, setDay] = useState<number | string>(1);
-  const [need, setNeed] = useState<boolean>(catById[first] ? catById[first].essential : true);
+  const [need, setNeed] = useState<boolean>(true);
   const [ongoing, setOngoing] = useState<boolean>(true);
   const [until, setUntil] = useState<string>("");
   const merchRef = React.useRef<HTMLInputElement>(null);
@@ -175,14 +175,14 @@ export function AddRecurring({ open, today, onClose, onAdd, categories, catById 
   useEffect(() => {
     if (open) {
       setMerchant(""); setCat(first); setAmount(""); setDay(1);
-      setNeed(catById[first] ? catById[first].essential : true);
+      setNeed(true);
       setOngoing(true); setUntil("");
       setTimeout(() => merchRef.current && merchRef.current.focus(), 60);
     }
   }, [open]);
 
   if (!open) return null;
-  const selectCat = (id: CategoryId) => { setCat(id); setNeed(catById[id] ? catById[id].essential : true); };
+  const selectCat = (id: CategoryId) => { setCat(id); setNeed(true); };
   const valid = parseFloat(amount) > 0 && merchant.trim() && (ongoing || until);
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {

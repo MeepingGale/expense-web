@@ -178,6 +178,7 @@ export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate,
   const seedDate = editTx ? `${editTx.year ?? 0}-${pad2((editTx.month ?? 0) + 1)}-${pad2(editTx.day)}` : defaultDate;
   const [amount, setAmount] = useState<string>("");
   const [cat, setCat] = useState<string>(categories[0] ? categories[0].id : "");
+  const [subcat, setSubcat] = useState<string>("");
   const [merchant, setMerchant] = useState<string>("");
   const [date, setDate] = useState<string>(seedDate);
   const [need, setNeed] = useState<boolean>(true);
@@ -194,13 +195,13 @@ export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate,
   useEffect(() => {
     if (open) {
       if (editTx) {
-        setAmount(String(Math.round(editTx.amount * 100) / 100)); setCat(editTx.cat); setMerchant(editTx.merchant);
+        setAmount(String(Math.round(editTx.amount * 100) / 100)); setCat(editTx.cat); setSubcat(editTx.subcat ?? ""); setMerchant(editTx.merchant);
         setDate(`${editTx.year ?? 0}-${pad2((editTx.month ?? 0) + 1)}-${pad2(editTx.day)}`);
         setNeed(editTx.need); setFiles(editTx.attachments || []);
       } else {
         const first = categories[0] ? categories[0].id : "";
-        setAmount(""); setCat(first); setMerchant(""); setDate(defaultDate);
-        setNeed(catById[first] ? catById[first].essential : true); setFiles([]);
+        setAmount(""); setCat(first); setSubcat(""); setMerchant(""); setDate(defaultDate);
+        setNeed(true); setFiles([]);
       }
       setRecurring(false); setOngoing(true); setUntil("");
       setTimeout(() => amtRef.current && amtRef.current.focus(), 60);
@@ -211,7 +212,13 @@ export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate,
   const dateOk = date >= minStr && date <= maxStr;
   const valid = parseFloat(amount) > 0 && dateOk && (!recurring || ongoing || until);
 
-  const selectCat = (id: string) => { setCat(id); setNeed(catById[id] ? catById[id].essential : true); };
+  const subs = catById[cat]?.subs ?? [];
+  const selectCat = (id: string) => { setCat(id); setSubcat(""); setNeed(true); };
+  const selectSub = (id: string) => {
+    setSubcat(id);
+    const s = (catById[cat]?.subs ?? []).find((x) => x.id === id);
+    if (s) setNeed(s.essential);
+  };
 
   const onFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const list = [...(e.target.files || [])];
@@ -229,7 +236,7 @@ export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate,
     if (!valid) return;
     const { year, month, day } = parseDateInput(date);
     onAdd({
-      year, month, day, cat,
+      year, month, day, cat, subcat: subcat || null,
       amount: Math.round(parseFloat(amount) * 100) / 100,
       merchant: merchant.trim() || catById[cat].name,
       need, attachments: files,
@@ -266,6 +273,15 @@ export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate,
             ))}
           </div>
         </label>
+        {subs.length > 0 && (
+          <label className="field">
+            <span>Sub-category</span>
+            <select className="sub-select" value={subcat} onChange={(e) => selectSub(e.target.value)}>
+              <option value="">— None —</option>
+              {subs.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </label>
+        )}
         <div className="field-row">
           <label className="field">
             <span>Merchant</span>

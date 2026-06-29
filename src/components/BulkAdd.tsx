@@ -8,6 +8,7 @@ interface BulkEditRow {
   date: string;
   merchant: string;
   cat: CategoryId;
+  subcat: string;
   amount: string;
   need: boolean;
 }
@@ -19,6 +20,7 @@ interface BulkInsertItem {
   month: number;
   day: number;
   cat: CategoryId;
+  subcat: string | null;
   amount: number;
   merchant: string;
   need: boolean;
@@ -46,7 +48,7 @@ const _normalizeDate = (s: string): string | null => {
 export function BulkAdd({ open, onClose, onInsert, categories, catById, minDate, maxDate }: BulkAddProps) {
   const minStr = minDate, maxStr = maxDate;
   const firstCat = categories[0] ? categories[0].id : "";
-  const blank = (): BulkEditRow => ({ date: maxStr, merchant: "", cat: firstCat, amount: "", need: catById[firstCat] ? catById[firstCat].essential : true });
+  const blank = (): BulkEditRow => ({ date: maxStr, merchant: "", cat: firstCat, subcat: "", amount: "", need: true });
   const [rows, setRows] = useState<BulkEditRow[]>([]);
   const [paste, setPaste] = useState<string>("");
   const [showPaste, setShowPaste] = useState<boolean>(false);
@@ -68,7 +70,11 @@ export function BulkAdd({ open, onClose, onInsert, categories, catById, minDate,
   const update = (i: number, key: keyof BulkEditRow, val: string | boolean) => setRows((prev) => prev.map((r, j) => {
     if (j !== i) return r;
     const next = { ...r, [key]: val };
-    if (key === "cat" && catById[val as CategoryId]) next.need = catById[val as CategoryId].essential;
+    if (key === "cat") { next.subcat = ""; next.need = true; }
+    if (key === "subcat") {
+      const s = (catById[next.cat]?.subs ?? []).find((x) => x.id === val);
+      if (s) next.need = s.essential;
+    }
     return next;
   }));
   const addRow = () => setRows((prev) => [...prev, blank()]);
@@ -94,8 +100,8 @@ export function BulkAdd({ open, onClose, onInsert, categories, catById, minDate,
         if (NEED_WORDS.includes(last)) { need = true; rest.pop(); }
         else if (WANT_WORDS.includes(last)) { need = false; rest.pop(); }
       }
-      out.push({ date, merchant: rest.join(", ").trim() || catById[cat].name, cat,
-        amount: String(amount), need: need != null ? need : catById[cat].essential });
+      out.push({ date, merchant: rest.join(", ").trim() || catById[cat].name, cat, subcat: "",
+        amount: String(amount), need: need != null ? need : true });
     });
     if (out.length) { setRows((prev) => [...prev.filter((r) => r.amount || r.merchant), ...out]); setPaste(""); setShowPaste(false); }
   };
@@ -107,7 +113,7 @@ export function BulkAdd({ open, onClose, onInsert, categories, catById, minDate,
   const doInsert = () => {
     const items: BulkInsertItem[] = valid.map((r) => {
       const [y, m, d] = r.date.split("-").map(Number);
-      return { year: y, month: m - 1, day: d, cat: r.cat, amount: Math.round(parseFloat(r.amount) * 100) / 100,
+      return { year: y, month: m - 1, day: d, cat: r.cat, subcat: r.subcat || null, amount: Math.round(parseFloat(r.amount) * 100) / 100,
         merchant: r.merchant.trim() || catById[r.cat].name, need: r.need };
     });
     if (items.length) onInsert(items);
@@ -142,7 +148,7 @@ export function BulkAdd({ open, onClose, onInsert, categories, catById, minDate,
 
         <div className="bulk-grid">
           <div className="bulk-row bulk-head">
-            <span>Date</span><span>Merchant</span><span>Category</span><span>Amount</span><span>Type</span><span></span>
+            <span>Date</span><span>Merchant</span><span>Category</span><span>Sub-category</span><span>Amount</span><span>Type</span><span></span>
           </div>
           <div className="bulk-rows">
             {rows.map((r, i) => {
@@ -154,6 +160,13 @@ export function BulkAdd({ open, onClose, onInsert, categories, catById, minDate,
                   <div className="txv-select-wrap">
                     <select value={r.cat} onChange={(e) => update(i, "cat", e.target.value)}>
                       {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="txv-select-wrap">
+                    <select value={r.subcat} onChange={(e) => update(i, "subcat", e.target.value)}
+                      disabled={!(catById[r.cat]?.subs?.length)}>
+                      <option value="">{catById[r.cat]?.subs?.length ? "— None —" : "—"}</option>
+                      {(catById[r.cat]?.subs ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                   </div>
                   <div className="bulk-amt">

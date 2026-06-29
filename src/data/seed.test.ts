@@ -41,8 +41,8 @@ describe("buildSeed", () => {
 
 describe("recompute", () => {
   const cats: Category[] = [
-    { id: "a", name: "A", hue: 1, essential: true },
-    { id: "b", name: "B", hue: 2, essential: false },
+    { id: "a", name: "A", hue: 1, subs: [] },
+    { id: "b", name: "B", hue: 2, subs: [] },
   ];
   const base = (transactions: Transaction[]) =>
     ({
