@@ -133,19 +133,28 @@ export function TxDetail({ tx, catById, onClose, onEdit, onDelete }: TxDetailPro
           <span className="td-att-label">Attachments {atts.length > 0 && <em>({atts.length})</em>}</span>
           {atts.length > 0 ? (
             <div className="att-grid">
-              {atts.map((a, i) =>
-                a.type && a.type.startsWith("image/") ? (
+              {atts.map((a, i) => {
+                const isImage = a.type && a.type.startsWith("image/");
+                const isPdf = a.type === "application/pdf" || (!!a.name && a.name.toLowerCase().endsWith(".pdf"));
+                if (isImage) return (
                   <a key={i} className="att-item" href={a.url} target="_blank" rel="noopener">
                     <img src={a.url} alt={a.name} />
                     <span className="att-name">{a.name}</span>
                   </a>
-                ) : (
+                );
+                if (isPdf) return (
+                  <div key={i} className="att-item att-pdf">
+                    <embed src={a.url} type="application/pdf" title={a.name} />
+                    <span className="att-name">{a.name}</span>
+                  </div>
+                );
+                return (
                   <a key={i} className="att-item att-file" href={a.url} download={a.name}>
                     <div className="att-fileicon"><Paperclip size={22} /></div>
                     <span className="att-name">{a.name}</span>
                   </a>
-                )
-              )}
+                );
+              })}
             </div>
           ) : (
             <div className="td-att-empty"><Paperclip size={18} /><span>No attachments on this expense</span></div>

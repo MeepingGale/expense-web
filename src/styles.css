@@ -406,6 +406,8 @@ body{
 .att-item{display:flex;flex-direction:column;gap:6px;text-decoration:none;color:var(--text-dim)}
 .att-item img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:11px;border:1px solid var(--border-strong)}
 .att-file .att-fileicon{aspect-ratio:1;display:grid;place-items:center;background:var(--card-2);border:1px solid var(--border-strong);border-radius:11px;color:var(--text-faint)}
+.att-pdf{grid-column:1/-1}
+.att-pdf embed{width:100%;height:360px;border:1px solid var(--border-strong);border-radius:11px;background:#fff}
 .att-name{font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .modal-tall{max-height:92vh;overflow-y:auto}
 .btn.danger{background:var(--danger);color:#fff}
