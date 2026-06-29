@@ -461,28 +461,11 @@ body{
 /* ---------- categories view ---------- */
 .catv{max-width:920px;margin:0 auto;padding:clamp(16px,4vw,40px);display:flex;flex-direction:column;gap:16px}
 .catv-head h1{font-family:"Space Grotesk";font-weight:600;font-size:27px;letter-spacing:-.02em;margin:0}
-.catv-cols{display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start}
-.catv-form{display:flex;flex-direction:column;gap:14px;position:sticky;top:88px}
-.catv-form h2{font-family:"Space Grotesk";font-weight:600;font-size:17px;margin:0 0 2px}
-.catv-form .field{margin-bottom:0}
-.catv-form-actions{display:flex;align-items:center;gap:10px;margin-top:6px}
 .hue-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
 .hue-swatch{aspect-ratio:1;border-radius:9px;border:2px solid transparent;cursor:pointer;display:grid;place-items:center;transition:transform .12s}
 .hue-swatch:hover{transform:scale(1.08)}
 .hue-swatch.sel{box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--text)}
-.catv-preview{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 13px;
-  background:var(--card-2);border:1px solid var(--border);border-radius:11px}
-.catv-preview-label{font-size:11.5px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em}
-.cat-row-chip{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600}
-.cat-row-chip i{width:10px;height:10px;border-radius:50%}
-.catv-list{padding:6px 8px}
-.cat-manage-row{border-bottom:1px solid var(--border)}
-.cat-manage-row:last-child{border-bottom:0}
-.cat-manage-main{display:flex;align-items:center;gap:13px;padding:13px 10px}
 .cat-swatch{width:13px;height:13px;border-radius:5px;flex-shrink:0}
-.cat-manage-text{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
-.cat-manage-name{font-size:14.5px;font-weight:600}
-.cat-manage-usage{font-size:12px;color:var(--text-faint);font-variant-numeric:tabular-nums}
 .cat-del-btn{appearance:none;width:34px;height:34px;border-radius:9px;border:1px solid var(--border);
   background:transparent;color:var(--text-faint);cursor:pointer;display:grid;place-items:center;transition:.15s;flex-shrink:0}
 .cat-del-btn:hover:not(:disabled){color:var(--danger);border-color:var(--danger);background:color-mix(in oklab,var(--danger) 10%,transparent)}
@@ -490,8 +473,6 @@ body{
 .cat-edit-btn{appearance:none;width:34px;height:34px;border-radius:9px;border:1px solid var(--border);
   background:transparent;color:var(--text-faint);cursor:pointer;display:grid;place-items:center;transition:.15s;flex-shrink:0}
 .cat-edit-btn:hover{color:var(--accent);border-color:var(--accent);background:color-mix(in oklab,var(--accent) 10%,transparent)}
-.cat-manage-actions{display:flex;align-items:center;gap:7px;flex-shrink:0}
-.cat-manage-row.confirming,.cat-manage-row.editing{background:var(--card-2);border-radius:11px}
 .cat-confirm{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
   padding:0 10px 14px;font-size:13px;color:var(--text-dim)}
 .cat-confirm b{color:var(--text);font-weight:700}
@@ -762,8 +743,6 @@ body{
   .txv-head .add-btn{align-self:stretch}
   .txv-row{gap:10px}
   .txv-group-head{top:124px}
-  .catv-cols{grid-template-columns:1fr}
-  .catv-form{position:static}
   .nw-grid{grid-template-columns:1fr}
   .fc-grid{grid-template-columns:1fr}
   .topbar-actions{margin-left:auto}
