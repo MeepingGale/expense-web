@@ -36,7 +36,7 @@ export function CategoriesView({ categories, months, onAdd, onEdit, onRemove }: 
 
   // usage per main category across all months
   const usage = useMemo<Record<string, { count: number; total: number }>>(() => {
-    const u: Record<string, { count: number; total: number }> = {};
+    const u: Record<string, { count: number; total: number }> = Object.create(null);
     categories.forEach((c) => (u[c.id] = { count: 0, total: 0 }));
     months.forEach((m) => m.transactions.forEach((tx) => {
       if (u[tx.cat]) { u[tx.cat].count++; u[tx.cat].total += tx.amount; }

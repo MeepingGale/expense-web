@@ -81,6 +81,18 @@ describe("recompute", () => {
     expect(r.total).toBe(18);
   });
 
+  it("is immune to prototype-key category ids (e.g. a deleted 'Constructor' category)", () => {
+    // tx references a category id that collides with Object.prototype and is
+    // no longer in the category list — must aggregate as a number, not concat
+    // onto the inherited function.
+    const r = recompute(
+      base([{ id: "1", day: 1, cat: "constructor", amount: 10, merchant: "x", need: true, recurId: null }]),
+      cats,
+    );
+    expect(r.byCat["constructor"]).toBe(10);
+    expect(r.total).toBe(10);
+  });
+
   it("rounds the total to cents and zero-fills unused categories", () => {
     const r = recompute(
       base([

@@ -88,7 +88,11 @@ export default function App() {
   const [currency, setCurrency] = useState<string>(stored?.currency ?? "USD");
   const [saveFailed, setSaveFailed] = useState<boolean>(false);
 
-  const catById = useMemo(() => Object.fromEntries(categories.map((c) => [c.id, c])), [categories]);
+  const catById = useMemo(() => {
+    const map: Record<CategoryId, Category> = Object.create(null); // user-derived ids — avoid inherited keys
+    categories.forEach((c) => { map[c.id] = c; });
+    return map;
+  }, [categories]);
 
   const month = months[idx];
   const prev = idx > 0 ? months[idx - 1] : null;
@@ -145,7 +149,7 @@ export default function App() {
   // needs vs wants for the selected month
   const nw = useMemo(() => {
     let need = 0, want = 0, needCount = 0, wantCount = 0;
-    const needCat: Record<string, number> = {}, wantCat: Record<string, number> = {};
+    const needCat: Record<string, number> = Object.create(null), wantCat: Record<string, number> = Object.create(null);
     month.transactions.forEach((tx) => {
       if (tx.need) { need += tx.amount; needCount++; needCat[tx.cat] = (needCat[tx.cat] || 0) + tx.amount; }
       else { want += tx.amount; wantCount++; wantCat[tx.cat] = (wantCat[tx.cat] || 0) + tx.amount; }
@@ -242,7 +246,7 @@ export default function App() {
         if (i < 0) return; // before the scaffold start — unreachable via the UI (minDate)
         if (!touched[i]) touched[i] = { ...base[i], transactions: [...base[i].transactions] };
         touched[i].transactions.push({
-          id: `tx-${it.year}-${it.month}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          id: `tx-${crypto.randomUUID()}`,
           day: it.day, cat: it.cat, subcat: it.subcat ?? null, amount: it.amount, merchant: it.merchant,
           need: it.need, attachments: it.attachments || [], recurId: it.recurId || null, _new: true,
         });
@@ -260,7 +264,7 @@ export default function App() {
     }
     let recurId: string | null = null;
     if (item.recurring) {
-      recurId = `user-${Date.now()}`;
+      recurId = `user-${crypto.randomUUID()}`;
       setRecurring((prev) => [...prev, { id: recurId!, merchant: item.merchant, cat: item.cat, subcat: item.subcat,
         amount: item.amount, day: item.day, need: item.need, endKey: item.recurring!.endKey, active: true }]);
     }
@@ -292,7 +296,7 @@ export default function App() {
 
   // add a brand-new recurring expense (from the Recurring tab)
   const addRecurring = (item: Omit<RecurringItem, "id" | "active">) => {
-    const recurId = `user-${Date.now()}`;
+    const recurId = `user-${crypto.randomUUID()}`;
     setRecurring((prev) => [...prev, { id: recurId, ...item, active: true }]);
     setMonths((prevM) => prevM.map((m) => {
       if (!m.isCurrent) return m;

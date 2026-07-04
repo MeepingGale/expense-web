@@ -80,8 +80,8 @@ function computeInsights({ month, months, idx, catById, budget }: InsightsProps)
       text: <>Largest expense: <b>{big.merchant}</b> — {fmtUSD(big.amount, true)}{catById[big.cat] ? ` · ${catById[big.cat].name}` : ""}.</> });
   }
 
-  // most frequent merchant
-  const freq: Record<string, number> = {};
+  // most frequent merchant (null-proto: merchant names are user text)
+  const freq: Record<string, number> = Object.create(null);
   month.transactions.forEach((tx) => { freq[tx.merchant] = (freq[tx.merchant] || 0) + 1; });
   const topM = Object.entries(freq).sort((a, b) => b[1] - a[1])[0];
   if (topM && topM[1] >= 3) {

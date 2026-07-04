@@ -5,9 +5,11 @@ export function recompute(
   month: Omit<MonthData, "byCat" | "byDay" | "total">,
   categories: Category[],
 ): MonthData {
-  const byCat: Record<CategoryId, number> = {};
+  // Null-prototype maps: category ids come from user-entered names ("Constructor"
+  // slugs to "constructor"), which on a plain object would hit inherited keys.
+  const byCat: Record<CategoryId, number> = Object.create(null);
   categories.forEach((c) => (byCat[c.id] = 0));
-  const byDay: Record<number, number> = {};
+  const byDay: Record<number, number> = Object.create(null);
   let total = 0;
   month.transactions.forEach((t) => {
     byCat[t.cat] = (byCat[t.cat] ?? 0) + t.amount;
