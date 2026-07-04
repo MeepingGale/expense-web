@@ -97,6 +97,18 @@ export function ThemeMenu({ theme, onChange }: ThemeMenuProps) {
   );
 }
 
+// Chrome blocks top-level navigation to data: URLs, so a plain <a href={dataUrl}>
+// silently does nothing — convert to a blob object URL and open that instead.
+function openAttachment(url: string) {
+  fetch(url)
+    .then((r) => r.blob())
+    .then((b) => {
+      const obj = URL.createObjectURL(b);
+      window.open(obj, "_blank", "noopener");
+      setTimeout(() => URL.revokeObjectURL(obj), 60_000);
+    });
+}
+
 export function TxDetail({ tx, catById, onClose, onEdit, onDelete }: TxDetailProps) {
   const [confirmDel, setConfirmDel] = useState<boolean>(false);
   React.useEffect(() => { setConfirmDel(false); }, [tx]);
@@ -139,7 +151,8 @@ export function TxDetail({ tx, catById, onClose, onEdit, onDelete }: TxDetailPro
                 const isImage = a.type && a.type.startsWith("image/");
                 const isPdf = a.type === "application/pdf" || (!!a.name && a.name.toLowerCase().endsWith(".pdf"));
                 if (isImage) return (
-                  <a key={i} className="att-item" href={a.url} target="_blank" rel="noopener">
+                  <a key={i} className="att-item" href={a.url} target="_blank" rel="noopener"
+                    onClick={(e) => { e.preventDefault(); openAttachment(a.url); }}>
                     <img src={a.url} alt={a.name} />
                     <span className="att-name">{a.name}</span>
                   </a>
