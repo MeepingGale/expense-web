@@ -120,13 +120,21 @@ export function useModalKeys(open: boolean, onClose: () => void, ref: React.RefO
   }, [open, onClose, ref]);
 }
 
+// Types that render inertly in a tab. Anything else — notably image/svg+xml
+// and text/html, which can run scripts — must NOT open from a blob: URL: blob
+// URLs inherit THIS app's origin, so a scripted "receipt" would execute with
+// access to the ledger's localStorage (stored XSS). Non-viewable types open
+// as octet-stream, which downloads instead of rendering.
+const VIEWABLE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif", "application/pdf"]);
+export const safeViewType = (t: string): string => (VIEWABLE_TYPES.has(t) ? t : "application/octet-stream");
+
 // Chrome blocks top-level navigation to data: URLs, so a plain <a href={dataUrl}>
 // silently does nothing — convert to a blob object URL and open that instead.
 function openAttachment(url: string) {
   fetch(url)
     .then((r) => r.blob())
     .then((b) => {
-      const obj = URL.createObjectURL(b);
+      const obj = URL.createObjectURL(new Blob([b], { type: safeViewType(b.type) }));
       window.open(obj, "_blank", "noopener");
       setTimeout(() => URL.revokeObjectURL(obj), 60_000);
     });
