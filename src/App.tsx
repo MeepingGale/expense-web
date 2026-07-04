@@ -85,8 +85,16 @@ export default function App() {
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [txPage, setTxPage] = useState<number>(0);
   const [budget, setBudget] = useState<number>(stored?.budget ?? EXPENSE.monthlyBudget);
+  const [catBudgets, setCatBudgets] = useState<Record<string, number>>(() =>
+    Object.assign(Object.create(null), stored?.catBudgets));
   const [currency, setCurrency] = useState<string>(stored?.currency ?? "USD");
   const [saveFailed, setSaveFailed] = useState<boolean>(false);
+
+  const setCatBudget = (id: CategoryId, v: number | null) => setCatBudgets((prev) => {
+    const next: Record<string, number> = Object.assign(Object.create(null), prev);
+    if (v && v > 0) next[id] = v; else delete next[id];
+    return next;
+  });
 
   const catById = useMemo(() => {
     const map: Record<CategoryId, Category> = Object.create(null); // user-derived ids — avoid inherited keys
@@ -392,10 +400,10 @@ export default function App() {
     const timer = setTimeout(() => {
       const txByMonth: Record<string, Transaction[]> = {};
       months.forEach((m) => { txByMonth[m.key] = m.transactions; });
-      setSaveFailed(!save({ v: 4, txByMonth, categories, recurring, budget, currency, settings: t }));
+      setSaveFailed(!save({ v: 4, txByMonth, categories, recurring, budget, catBudgets, currency, settings: t }));
     }, 300);
     return () => clearTimeout(timer);
-  }, [months, categories, recurring, budget, currency, t]);
+  }, [months, categories, recurring, budget, catBudgets, currency, t]);
 
   const changeCurrency = (code: string) => setCurrency(code);
 
@@ -415,7 +423,7 @@ export default function App() {
   const exportBackup = () => {
     const txByMonth: Record<string, Transaction[]> = {};
     months.forEach((m) => { txByMonth[m.key] = m.transactions; });
-    const data = JSON.stringify({ v: 4, txByMonth, categories, recurring, budget, currency, settings: t }, null, 2);
+    const data = JSON.stringify({ v: 4, txByMonth, categories, recurring, budget, catBudgets, currency, settings: t }, null, 2);
     const url = URL.createObjectURL(new Blob([data], { type: "application/json" }));
     const a = document.createElement("a");
     a.href = url; a.download = `ledger-backup-${toDateInput(new Date())}.json`;
@@ -518,6 +526,7 @@ export default function App() {
       )}
       {view === "settings" && (
         <SettingsView budget={budget} onBudget={setBudget}
+          categories={categories} catBudgets={catBudgets} onCatBudget={setCatBudget}
           currency={currency} onCurrency={changeCurrency}
           currencies={CURRENCIES} onReset={resetData} settings={t} onSetting={setTweak}
           onExportBackup={exportBackup} onImportBackup={importBackup} />
@@ -540,7 +549,7 @@ export default function App() {
         </KpiCard>
 
         {/* Insights */}
-        <Insights month={month} months={months} idx={idx} catById={catById} budget={budget} />
+        <Insights month={month} months={months} idx={idx} catById={catById} budget={budget} catBudgets={catBudgets} />
 
         {/* Trend */}
         <section className="card span-trend">
@@ -575,6 +584,7 @@ export default function App() {
             <div className="legend">
               {donutData.items.map((c) => {
                 const pct = donutData.total ? (c.amount / donutData.total) * 100 : 0;
+                const catBudget = !filterCat ? catBudgets[c.id] : undefined; // budgets apply to main categories
                 return (
                   <button key={c.id} className={"legend-row" + (filterCat ? " static" : "")}
                     onMouseEnter={() => setHoverCat(c.id)} onMouseLeave={() => setHoverCat(null)}
@@ -582,7 +592,9 @@ export default function App() {
                     <i className="legend-dot" style={{ background: catColor(c.hue) }} />
                     <span className="legend-name">{c.name}</span>
                     <span className="legend-bar"><span style={{ width: pct + "%", background: catColor(c.hue) }} /></span>
-                    <span className="legend-amt">{fmtUSD(c.amount)}</span>
+                    <span className={"legend-amt" + (catBudget && c.amount > catBudget ? " over" : "")}>
+                      {fmtUSD(c.amount)}{catBudget ? <em className="legend-budget"> / {fmtUSD(catBudget)}</em> : null}
+                    </span>
                     <span className="legend-pct">{pct.toFixed(0)}%</span>
                   </button>
                 );

@@ -1,12 +1,16 @@
-/* Settings: editable budget, currency, appearance, and data reset. */
+/* Settings: budgets, currency, appearance, backup, and data reset. */
 import React, { useState, useEffect } from "react";
 import { ACCENTS } from "../data/constants";
 import { AmountInput } from "./common";
-import type { Currency, Settings } from "../types";
+import { catColor } from "../data/format";
+import type { Category, CategoryId, Currency, Settings } from "../types";
 
 interface SettingsViewProps {
   budget: number;
   onBudget: (v: number) => void;
+  categories: Category[];
+  catBudgets: Record<string, number>;
+  onCatBudget: (id: CategoryId, v: number | null) => void;
   currency: string;
   onCurrency: (code: string) => void;
   currencies: Currency[];
@@ -18,8 +22,23 @@ interface SettingsViewProps {
   onImportBackup: (file: File) => void;
 }
 
+// Per-category budget cell: commits on blur/Enter, empty clears the budget.
+function CatBudgetInput({ value, onCommit }: { value?: number; onCommit: (v: number | null) => void }) {
+  const [draft, setDraft] = useState(value != null ? String(value) : "");
+  useEffect(() => { setDraft(value != null ? String(value) : ""); }, [value]);
+  const commit = () => {
+    const v = Math.round(parseFloat(draft) || 0);
+    onCommit(v > 0 ? v : null);
+  };
+  return (
+    <AmountInput className="catbud-input" value={draft} onValue={setDraft} placeholder="—" onBlur={commit}
+      onKeyDown={(e) => { if (e.key === "Enter") { commit(); (e.target as HTMLInputElement).blur(); } }} />
+  );
+}
+
 export function SettingsView({
-  budget, onBudget, currency, onCurrency, currencies, onReset, settings, onSetting,
+  budget, onBudget, categories, catBudgets, onCatBudget,
+  currency, onCurrency, currencies, onReset, settings, onSetting,
   onExportBackup, onImportBackup,
 }: SettingsViewProps) {
   const [draft, setDraft] = useState(String(budget));
@@ -50,6 +69,22 @@ export function SettingsView({
             <AmountInput className="setv-budget" value={draft} onValue={setDraft} onBlur={commitBudget}
               onKeyDown={(e) => { if (e.key === "Enter") { commitBudget(); (e.target as HTMLInputElement).blur(); } }} />
           </div>
+        </div>
+      </section>
+
+      <section className="card setv-card">
+        <div className="setv-label">
+          <h2>Category budgets</h2>
+          <p>Optional monthly limit per category — shown in the By-category breakdown and insights.</p>
+        </div>
+        <div className="catbud-grid">
+          {categories.map((c) => (
+            <div key={c.id} className="catbud-row">
+              <span className="cat-swatch" style={{ background: catColor(c.hue) }} />
+              <span className="catbud-name">{c.name}</span>
+              <CatBudgetInput value={catBudgets[c.id]} onCommit={(v) => onCatBudget(c.id, v)} />
+            </div>
+          ))}
         </div>
       </section>
 

@@ -16,6 +16,7 @@ interface InsightsProps {
   idx: number;
   catById: Record<CategoryId, Category>;
   budget: number;
+  catBudgets: Record<string, number>;
 }
 
 interface InsightItem {
@@ -42,7 +43,7 @@ export function InsightIcon({ kind }: InsightIconProps) {
   return <svg width="16" height="16" viewBox="0 0 16 16">{p}</svg>;
 }
 
-function computeInsights({ month, months, idx, catById, budget }: InsightsProps): InsightItem[] {
+function computeInsights({ month, months, idx, catById, budget, catBudgets }: InsightsProps): InsightItem[] {
   const out: InsightItem[] = [];
   const hist = months.slice(Math.max(0, idx - 3), idx);
 
@@ -73,6 +74,20 @@ function computeInsights({ month, months, idx, catById, budget }: InsightsProps)
       text: <>{month.isPartial ? "On pace to stay" : "Stayed"} under budget by <b>{fmtUSD(budget - projected)}</b>.</> });
   }
 
+  // worst category over its own budget (pace-aware in the current month)
+  let worst: { name: string; proj: number; b: number } | null = null;
+  for (const cid of Object.keys(catBudgets)) {
+    const b = catBudgets[cid];
+    if (!b || !catById[cid]) continue;
+    const cur = month.byCat[cid] || 0;
+    const proj = month.isPartial ? (cur / month.lastDay) * month.daysInMonth : cur;
+    if (proj > b && (!worst || proj - b > worst.proj - worst.b)) worst = { name: catById[cid].name, proj, b };
+  }
+  if (worst) {
+    out.push({ type: "warn", icon: "alert",
+      text: <><b>{worst.name}</b> is {month.isPartial ? "on pace for" : "at"} {fmtUSD(worst.proj)} — {fmtUSD(worst.proj - worst.b)} over its {fmtUSD(worst.b)} budget.</> });
+  }
+
   // largest single expense
   if (month.transactions.length) {
     const big = [...month.transactions].sort((a, b) => b.amount - a.amount)[0];
@@ -92,8 +107,8 @@ function computeInsights({ month, months, idx, catById, budget }: InsightsProps)
   return out.slice(0, 4);
 }
 
-export function Insights({ month, months, idx, catById, budget }: InsightsProps) {
-  const items = useMemo(() => computeInsights({ month, months, idx, catById, budget }), [month, months, idx, catById, budget]);
+export function Insights({ month, months, idx, catById, budget, catBudgets }: InsightsProps) {
+  const items = useMemo(() => computeInsights({ month, months, idx, catById, budget, catBudgets }), [month, months, idx, catById, budget, catBudgets]);
   if (!items.length) return null;
   return (
     <section className="card span-insights">

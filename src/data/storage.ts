@@ -41,6 +41,7 @@ export function load(): StoredStateV4 | null {
       categories,
       txByMonth: base.txByMonth && typeof base.txByMonth === "object" && !Array.isArray(base.txByMonth) ? base.txByMonth : {},
       recurring: Array.isArray(base.recurring) ? base.recurring : [],
+      catBudgets: base.catBudgets && typeof base.catBudgets === "object" && !Array.isArray(base.catBudgets) ? base.catBudgets : {},
     } as StoredStateV4;
   } catch {
     return null; // corrupt or disabled storage

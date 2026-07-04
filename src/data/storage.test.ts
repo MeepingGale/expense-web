@@ -4,7 +4,7 @@ import type { StoredStateV4 } from "../types";
 
 const v4: StoredStateV4 = {
   v: 4, txByMonth: { "2026-06": [] }, categories: [], recurring: [],
-  budget: 3800, currency: "USD", settings: DEFAULT_SETTINGS,
+  budget: 3800, catBudgets: {}, currency: "USD", settings: DEFAULT_SETTINGS,
 };
 
 describe("storage", () => {

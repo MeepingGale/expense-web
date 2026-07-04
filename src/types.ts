@@ -136,6 +136,7 @@ export interface StoredStateV1 {
   categories: Category[];
   recurring: RecurringItem[];
   budget: number;
+  catBudgets?: Record<string, number>; // optional per-category monthly limits
   currency: string;
 }
 
