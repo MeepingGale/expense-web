@@ -97,6 +97,52 @@ export function ThemeMenu({ theme, onChange }: ThemeMenuProps) {
   );
 }
 
+interface AmountInputProps {
+  value: string;                       // raw digit string, e.g. "1234.5"
+  onValue: (raw: string) => void;
+  placeholder?: string;
+  autoFocus?: boolean;
+  inputRef?: React.RefObject<HTMLInputElement>;
+  onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>;
+  onBlur?: React.FocusEventHandler<HTMLInputElement>;
+  className?: string;                  // appended to the wrapper class
+  wrapClass?: string;                  // replaces the default "amount-input" wrapper
+}
+
+// The one money input: currency prefix + thousands grouping + caret math.
+// Controlled reformatting normally teleports the caret to the end on mid-string
+// edits; we count the digits left of the caret and restore the position in the
+// regrouped text after React re-renders.
+export function AmountInput({ value, onValue, placeholder, autoFocus, inputRef, onKeyDown, onBlur, className, wrapClass }: AmountInputProps) {
+  const localRef = useRef<HTMLInputElement>(null);
+  const ref = inputRef ?? localRef;
+  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const el = e.target;
+    const caret = el.selectionStart ?? el.value.length;
+    const digitsLeft = el.value.slice(0, caret).replace(/[^0-9.]/g, "").length;
+    const raw = el.value.replace(/[^0-9.]/g, "");
+    onValue(raw);
+    requestAnimationFrame(() => {
+      const node = ref.current;
+      if (!node) return;
+      const grouped = groupDigits(raw);
+      let pos = 0, seen = 0;
+      while (pos < grouped.length && seen < digitsLeft) {
+        if (/[0-9.]/.test(grouped[pos])) seen += 1;
+        pos += 1;
+      }
+      node.setSelectionRange(pos, pos);
+    });
+  };
+  return (
+    <div className={(wrapClass ?? "amount-input") + (className ? " " + className : "")}>
+      <span className="dollar">{currencySymbol()}</span>
+      <input ref={ref} inputMode="decimal" value={groupDigits(value)} placeholder={placeholder}
+        autoFocus={autoFocus} onChange={onChange} onKeyDown={onKeyDown} onBlur={onBlur} />
+    </div>
+  );
+}
+
 // Modal keyboard behavior: Escape closes, Tab cycles focus inside the modal
 // (minimal focus trap). Call before any early return; inert while !open.
 export function useModalKeys(open: boolean, onClose: () => void, ref: React.RefObject<HTMLElement | null>) {
@@ -325,11 +371,7 @@ export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate,
         </div>
         <label className="field amount-field">
           <span>Amount</span>
-          <div className="amount-input">
-            <span className="dollar">{currencySymbol()}</span>
-            <input ref={amtRef} inputMode="decimal" value={groupDigits(amount)} placeholder="0.00"
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))} />
-          </div>
+          <AmountInput inputRef={amtRef} value={amount} onValue={setAmount} placeholder="0.00" />
         </label>
         <label className="field">
           <span>Category</span>

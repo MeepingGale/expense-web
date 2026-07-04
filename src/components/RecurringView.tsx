@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { catColor, fmtUSD, currencySymbol, groupDigits, pad2, ordinal } from "../data/format";
 import { MONTHS } from "../data/constants";
-import { useModalKeys } from "./common";
+import { useModalKeys, AmountInput } from "./common";
 import type { Category, CategoryId, RecurringItem } from "../types";
 
 function fmtEndKey(key: string | null | undefined): string | null {
@@ -70,12 +70,8 @@ export function RecurringRow({ item, catById, onEditAmount, onToggle }: Recurrin
       <div className="rec-amount">
         {editing ? (
           <div className="rec-edit">
-            <div className="amount-input rec-edit-input">
-              <span className="dollar">{currencySymbol()}</span>
-              <input autoFocus inputMode="decimal" value={groupDigits(draft)}
-                onChange={(e) => setDraft(e.target.value.replace(/[^0-9.]/g, ""))}
-                onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }} />
-            </div>
+            <AmountInput className="rec-edit-input" autoFocus value={draft} onValue={setDraft}
+              onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }} />
             <button className="rec-icon save" onClick={save} aria-label="Save">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3.2L13 4.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
@@ -229,11 +225,7 @@ export function AddRecurring({ open, today, onClose, onAdd, categories, catById 
           </label>
           <label className="field amount-field">
             <span>Amount</span>
-            <div className="amount-input">
-              <span className="dollar">{currencySymbol()}</span>
-              <input inputMode="decimal" value={groupDigits(amount)} placeholder="0.00"
-                onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))} />
-            </div>
+            <AmountInput value={amount} onValue={setAmount} placeholder="0.00" />
           </label>
         </div>
 

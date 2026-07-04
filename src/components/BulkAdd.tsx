@@ -1,7 +1,7 @@
 /* Bulk add transactions: paste-to-parse + editable grid, any date up to today. */
 import React, { useState, useEffect, useRef } from "react";
 import { fmtUSD, toDateInput, currencySymbol, groupDigits } from "../data/format";
-import { useModalKeys } from "./common";
+import { useModalKeys, AmountInput } from "./common";
 import type { Category, CategoryId } from "../types";
 
 // Internal editable-row shape (amount is the raw string from the input).
@@ -172,11 +172,7 @@ export function BulkAdd({ open, onClose, onInsert, categories, catById, minDate,
                       {(catById[r.cat]?.subs ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                   </div>
-                  <div className="bulk-amt">
-                    <span>{currencySymbol()}</span>
-                    <input inputMode="decimal" value={groupDigits(r.amount)} placeholder="0.00"
-                      onChange={(e) => update(i, "amount", e.target.value.replace(/[^0-9.]/g, ""))} />
-                  </div>
+                  <AmountInput wrapClass="bulk-amt" value={r.amount} onValue={(v) => update(i, "amount", v)} placeholder="0.00" />
                   <div className="txv-select-wrap">
                     <select value={r.need ? "need" : "want"} onChange={(e) => update(i, "need", e.target.value === "need")}>
                       <option value="need">Need</option>

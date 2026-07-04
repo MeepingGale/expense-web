@@ -1,7 +1,7 @@
 /* Settings: editable budget, currency, appearance, and data reset. */
 import React, { useState, useEffect } from "react";
 import { ACCENTS } from "../data/constants";
-import { groupDigits } from "../data/format";
+import { AmountInput } from "./common";
 import type { Currency, Settings } from "../types";
 
 interface SettingsViewProps {
@@ -43,13 +43,8 @@ export function SettingsView({
             <p>Used across KPIs, the budget line, and insights.</p>
           </div>
           <div className="setv-control">
-            <div className="amount-input setv-budget">
-              <span className="dollar">{cur.symbol}</span>
-              <input inputMode="decimal" value={groupDigits(draft)}
-                onChange={(e) => setDraft(e.target.value.replace(/[^0-9.]/g, ""))}
-                onBlur={commitBudget}
-                onKeyDown={(e) => { if (e.key === "Enter") { commitBudget(); (e.target as HTMLInputElement).blur(); } }} />
-            </div>
+            <AmountInput className="setv-budget" value={draft} onValue={setDraft} onBlur={commitBudget}
+              onKeyDown={(e) => { if (e.key === "Enter") { commitBudget(); (e.target as HTMLInputElement).blur(); } }} />
           </div>
         </div>
       </section>
