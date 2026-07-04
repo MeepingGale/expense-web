@@ -97,8 +97,11 @@ export default function App() {
   const month = months[idx];
   const prev = idx > 0 ? months[idx - 1] : null;
 
-  // keep format.ts's currency singleton in sync (and once on mount)
-  useEffect(() => { setLedgerCurrency(currency); }, [currency]);
+  // Keep format.ts's currency singleton in sync BEFORE children render — an
+  // effect runs after the pass, so everything rendered alongside a currency
+  // change (KPIs, chart labels) would show the previous symbol. Idempotent,
+  // so React strict-mode double renders are harmless.
+  setLedgerCurrency(currency);
 
   // period-aware comparison: if current month is partial, compare same day-range of prev month
   const cmp = useMemo<{ prevTotal: number | null; label: string | null }>(() => {
