@@ -175,6 +175,31 @@ describe("App — smoke + parity", () => {
     expect(readCount()).toBe(before + 1);
   });
 
+  it("prefills category, sub-category and type from merchant memory", () => {
+    const now = new Date();
+    const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    localStorage.setItem("ledger-state-v1", JSON.stringify({
+      v: 4,
+      txByMonth: { [key]: [{ id: "m1", day: 1, cat: "transport", subcat: "petrol", amount: 70, merchant: "Shell", need: true, recurId: null }] },
+      categories: [
+        { id: "dining", name: "Dining", hue: 22, subs: [] },
+        { id: "transport", name: "Transport", hue: 280, subs: [{ id: "petrol", name: "Petrol", hue: 48, essential: true }] },
+      ],
+      recurring: [], budget: 3800, currency: "USD", settings: DEFAULT_SETTINGS,
+    }));
+
+    const { container } = render(<App />);
+    fireEvent.click(container.querySelector(".add-btn") as HTMLElement);
+    const form = container.querySelector(".modal-tall") as HTMLElement;
+    // default selection is the first category (Dining)
+    expect(within(form).getByRole("button", { name: /Dining/ })).toHaveClass("sel");
+    // typing a known merchant flips category to Transport and selects the Petrol sub
+    fireEvent.change(within(form).getByPlaceholderText("Optional"), { target: { value: "Shell" } });
+    expect(within(form).getByRole("button", { name: /Transport/ })).toHaveClass("sel");
+    // (getByRole("combobox") is ambiguous: the merchant input's datalist also has that role)
+    expect((form.querySelector(".txv-select-wrap select") as HTMLSelectElement).value).toBe("petrol");
+  });
+
   it("keeps stored transactions older than the 12-month window (no aging-out)", () => {
     // A transaction 14 months back — outside the seed's trailing-12 scaffold.
     const now = new Date();

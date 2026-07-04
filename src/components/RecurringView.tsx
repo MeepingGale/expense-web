@@ -229,7 +229,8 @@ export function AddRecurring({ open, today, onClose, onAdd, categories, catById 
           </label>
         </div>
 
-        <label className="field">
+        {/* div, not label: a label would implicitly (mis)name its first button */}
+        <div className="field">
           <span>Category</span>
           <div className="cat-grid">
             {categories.map((c) => (
@@ -238,7 +239,7 @@ export function AddRecurring({ open, today, onClose, onAdd, categories, catById 
               </button>
             ))}
           </div>
-        </label>
+        </div>
 
         <label className="field">
           <span>Sub-category</span>

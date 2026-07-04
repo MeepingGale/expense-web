@@ -94,6 +94,26 @@ export default function App() {
     return map;
   }, [categories]);
 
+  // merchant memory: most-recent categorization per merchant, for autocomplete
+  // + prefill in the add flows (later months win — they're later in the array)
+  const merchantIndex = useMemo(() => {
+    const map: Record<string, { cat: CategoryId; subcat: string | null; need: boolean }> = Object.create(null);
+    months.forEach((m) => m.transactions.forEach((tx) => {
+      const k = tx.merchant.trim().toLowerCase();
+      if (k) map[k] = { cat: tx.cat, subcat: tx.subcat ?? null, need: tx.need };
+    }));
+    return map;
+  }, [months]);
+  const merchantNames = useMemo(() => {
+    const seen = new Set<string>();
+    const names: string[] = [];
+    months.forEach((m) => m.transactions.forEach((tx) => {
+      const n = tx.merchant.trim();
+      if (n && !seen.has(n.toLowerCase())) { seen.add(n.toLowerCase()); names.push(n); }
+    }));
+    return names.sort((a, b) => a.localeCompare(b));
+  }, [months]);
+
   const month = months[idx];
   const prev = idx > 0 ? months[idx - 1] : null;
 
@@ -342,16 +362,21 @@ export default function App() {
   useEffect(() => { setSelectedDay(null); }, [idx]);
   useEffect(() => { setTxPage(0); }, [selectedDay, filterCat, idx]);
 
-  // keyboard month nav
+  // keyboard: N opens Add expense; arrows navigate months. Both stay out of
+  // the way while a modal is open or the user is typing in a field.
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
-      if (adding) return;
+      const el = e.target as HTMLElement | null;
+      const typing = !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable);
+      const modalOpen = adding || bulk || addingRecurring || !!editingTx || !!viewerTx;
+      if (typing || modalOpen || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "n" || e.key === "N") { e.preventDefault(); setAdding(true); return; }
       if (e.key === "ArrowLeft") setIdx((i) => Math.max(0, i - 1));
       if (e.key === "ArrowRight") setIdx((i) => Math.min(months.length - 1, i + 1));
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [adding, months.length]);
+  }, [adding, bulk, addingRecurring, editingTx, viewerTx, months.length]);
 
   // apply theme at document root so text color cascades from the top (robust across switches)
   useEffect(() => {
@@ -637,12 +662,19 @@ export default function App() {
       </main>
       )}
 
+      <datalist id="merchants">
+        {merchantNames.map((n) => <option key={n} value={n} />)}
+      </datalist>
+
       <AddExpense open={adding} onClose={() => setAdding(false)} onAdd={addExpense} editTx={null}
-        defaultDate={defaultDate} minDate={minDate} maxDate={maxDate} categories={categories} catById={catById} />
+        defaultDate={defaultDate} minDate={minDate} maxDate={maxDate} categories={categories} catById={catById}
+        merchantIndex={merchantIndex} />
       <AddExpense open={!!editingTx} editTx={editingTx} onClose={() => setEditingTx(null)} onAdd={addExpense}
-        defaultDate={defaultDate} minDate={minDate} maxDate={maxDate} categories={categories} catById={catById} />
+        defaultDate={defaultDate} minDate={minDate} maxDate={maxDate} categories={categories} catById={catById}
+        merchantIndex={merchantIndex} />
       <BulkAdd open={bulk} onClose={() => setBulk(false)} onInsert={bulkInsert}
-        categories={categories} catById={catById} minDate={minDate} maxDate={maxDate} />
+        categories={categories} catById={catById} minDate={minDate} maxDate={maxDate}
+        merchantIndex={merchantIndex} />
       <AddRecurring open={addingRecurring} onClose={() => setAddingRecurring(false)} onAdd={addRecurring}
         categories={categories} catById={catById} today={EXPENSE.today} />
       <TxDetail tx={viewerTx} catById={catById} onClose={() => setViewerTx(null)}

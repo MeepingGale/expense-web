@@ -24,6 +24,7 @@ interface AddExpenseProps {
   defaultDate: string; minDate: string; maxDate: string;
   categories: Category[];
   catById: Record<CategoryId, Category>;
+  merchantIndex?: Record<string, { cat: CategoryId; subcat: string | null; need: boolean }>;
 }
 
 // ---- Components ----
@@ -282,7 +283,7 @@ export function TxDetail({ tx, catById, onClose, onEdit, onDelete }: TxDetailPro
 // and silently stop all saves.
 const MAX_ATTACHMENT_BYTES = 600 * 1024;
 
-export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate, maxDate, categories, catById }: AddExpenseProps) {
+export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate, maxDate, categories, catById, merchantIndex }: AddExpenseProps) {
   const seedDate = editTx ? `${editTx.year ?? 0}-${pad2((editTx.month ?? 0) + 1)}-${pad2(editTx.day)}` : defaultDate;
   const [amount, setAmount] = useState<string>("");
   const [cat, setCat] = useState<string>(categories[0] ? categories[0].id : "");
@@ -373,7 +374,8 @@ export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate,
           <span>Amount</span>
           <AmountInput inputRef={amtRef} value={amount} onValue={setAmount} placeholder="0.00" />
         </label>
-        <label className="field">
+        {/* div, not label: a label would implicitly (mis)name its first button */}
+        <div className="field">
           <span>Category</span>
           <div className="cat-grid">
             {categories.map((c) => (
@@ -383,7 +385,7 @@ export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate,
               </button>
             ))}
           </div>
-        </label>
+        </div>
         <label className="field">
           <span>Sub-category</span>
           <div className="txv-select-wrap">
@@ -398,7 +400,17 @@ export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate,
         <div className="field-row">
           <label className="field">
             <span>Merchant</span>
-            <input value={merchant} placeholder="Optional" onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMerchant(e.target.value)} />
+            <input value={merchant} placeholder="Optional" list="merchants"
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const v = e.target.value;
+                setMerchant(v);
+                // merchant memory: a known merchant prefills its last categorization
+                // (add mode only — editing shouldn't silently recategorize)
+                if (!editTx) {
+                  const hit = merchantIndex?.[v.trim().toLowerCase()];
+                  if (hit && catById[hit.cat]) { setCat(hit.cat); setSubcat(hit.subcat ?? ""); setNeed(hit.need); }
+                }
+              }} />
           </label>
           <label className="field date-field">
             <span>Date</span>

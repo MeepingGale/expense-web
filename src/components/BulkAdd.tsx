@@ -35,6 +35,7 @@ interface BulkAddProps {
   catById: Record<CategoryId, Category>;
   minDate: string;
   maxDate: string;
+  merchantIndex?: Record<string, { cat: CategoryId; subcat: string | null; need: boolean }>;
 }
 
 const _normalizeDate = (s: string): string | null => {
@@ -46,7 +47,7 @@ const _normalizeDate = (s: string): string | null => {
   return toDateInput(d);
 };
 
-export function BulkAdd({ open, onClose, onInsert, categories, catById, minDate, maxDate }: BulkAddProps) {
+export function BulkAdd({ open, onClose, onInsert, categories, catById, minDate, maxDate, merchantIndex }: BulkAddProps) {
   const minStr = minDate, maxStr = maxDate;
   const firstCat = categories[0] ? categories[0].id : "";
   const blank = (): BulkEditRow => ({ date: maxStr, merchant: "", cat: firstCat, subcat: "", amount: "", need: true });
@@ -109,6 +110,16 @@ export function BulkAdd({ open, onClose, onInsert, categories, catById, minDate,
     if (out.length) { setRows((prev) => [...prev.filter((r) => r.amount || r.merchant), ...out]); setPaste(""); setShowPaste(false); }
   };
 
+  // merchant memory: typing/picking a known merchant prefills the row's
+  // category, sub-category, and type from its last use
+  const setRowMerchant = (i: number, v: string) => setRows((prev) => prev.map((r, j) => {
+    if (j !== i) return r;
+    const hit = merchantIndex?.[v.trim().toLowerCase()];
+    return hit && catById[hit.cat]
+      ? { ...r, merchant: v, cat: hit.cat, subcat: hit.subcat ?? "", need: hit.need }
+      : { ...r, merchant: v };
+  }));
+
   const rowValid = (r: BulkEditRow) => parseFloat(r.amount) > 0 && r.date >= minStr && r.date <= maxStr && !!catById[r.cat];
   const valid = rows.filter(rowValid);
   const validTotal = valid.reduce((s, r) => s + parseFloat(r.amount), 0);
@@ -159,7 +170,7 @@ export function BulkAdd({ open, onClose, onInsert, categories, catById, minDate,
               return (
                 <div key={i} className={"bulk-row" + (bad ? " bad" : "")}>
                   <input type="date" value={r.date} min={minStr} max={maxStr} onChange={(e) => update(i, "date", e.target.value)} />
-                  <input value={r.merchant} placeholder="Optional" onChange={(e) => update(i, "merchant", e.target.value)} />
+                  <input value={r.merchant} placeholder="Optional" list="merchants" onChange={(e) => setRowMerchant(i, e.target.value)} />
                   <div className="txv-select-wrap">
                     <select value={r.cat} onChange={(e) => update(i, "cat", e.target.value)}>
                       {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
