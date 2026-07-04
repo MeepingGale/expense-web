@@ -125,6 +125,22 @@ export default function App() {
   const month = months[idx];
   const prev = idx > 0 ? months[idx - 1] : null;
 
+  // year view: the scaffold can span years ("grows with your data"), so the
+  // picker jumps between them and the trend chart is scoped to the selected
+  // month's year instead of cramming every month into one chart
+  const years = useMemo(() => [...new Set(months.map((m) => m.year))], [months]);
+  const yearMonths = useMemo(() => months.filter((m) => m.year === month.year), [months, month.year]);
+  const yearSelIdx = yearMonths.findIndex((m) => m.key === month.key);
+  const selectYearMonth = (i: number) => {
+    const gi = months.findIndex((m) => m.key === yearMonths[i]?.key);
+    if (gi >= 0) setIdx(gi);
+  };
+  const jumpToYear = (y: number) => {
+    for (let i = months.length - 1; i >= 0; i--) {
+      if (months[i].year === y) { setIdx(i); return; } // latest month of that year
+    }
+  };
+
   // Keep format.ts's currency singleton in sync BEFORE children render — an
   // effect runs after the pass, so everything rendered alongside a currency
   // change (KPIs, chart labels) would show the previous symbol. Idempotent,
@@ -490,6 +506,13 @@ export default function App() {
               {month.isPartial && <span className="month-tag">in progress</span>}
             </div>
             <button className="icon-btn" disabled={idx === months.length - 1} onClick={() => setIdx(idx + 1)} aria-label="Next month">›</button>
+            {years.length > 1 && (
+              <label className="txv-select-wrap year-pick">
+                <select value={month.year} onChange={(e) => jumpToYear(Number(e.target.value))} aria-label="Year">
+                  {years.map((y) => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </label>
+            )}
           </div>
         )}
 
@@ -556,7 +579,7 @@ export default function App() {
           <div className="card-head">
             <div>
               <h2>Monthly spending</h2>
-              <p className="card-sub">Last 12 months · click a bar to jump to that month</p>
+              <p className="card-sub">{years.length > 1 ? `${month.year} · ` : ""}click a bar to jump to that month</p>
             </div>
             <div className="seg-mini">
               {(["bars", "line", "area"] as const).map((m) => (
@@ -564,7 +587,7 @@ export default function App() {
               ))}
             </div>
           </div>
-          <TrendChart months={months} selectedIndex={idx} onSelect={setIdx}
+          <TrendChart months={yearMonths} selectedIndex={yearSelIdx} onSelect={selectYearMonth}
             accent={t.accent} mode={t.trendMode} budget={t.budgetLine ? budget : 0} />
         </section>
 

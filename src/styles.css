@@ -401,6 +401,8 @@ body{
 .catbud-input .dollar{font-size:13px}
 .catbud-input input{font-size:14px;padding:0 0 0 5px;height:100%}
 .legend-amt.over{color:var(--danger)}
+.year-pick{margin-left:8px}
+.year-pick select{padding:8px 30px 8px 12px;font-size:13px}
 .legend-budget{font-style:normal;color:var(--text-faint);font-weight:500}
 @media (max-width:720px){.catbud-grid{grid-template-columns:1fr}}
 .setv-backup label.btn{display:inline-flex;align-items:center;cursor:pointer}
