@@ -300,6 +300,14 @@ body{
 .cat-chip.sel{border-color:var(--accent);background:color-mix(in oklab,var(--accent) 14%,var(--card-2));color:var(--text)}
 .field-row{display:grid;grid-template-columns:1fr 150px;gap:12px}
 .field-row.fr-day{grid-template-columns:118px 1fr}
+/* side-by-side rows: compact the amount's hero type + align control heights
+   to the 43px text inputs so the row reads level (full-width amount keeps
+   its big type in Add expense) */
+.field-row .amount-input{height:43px}
+.field-row .amount-input .dollar{font-size:15px}
+.field-row .amount-input input{font-size:16px;padding:0 0 0 5px;height:100%}
+.field-row .need-toggle button{height:43px}
+.txv-select-wrap select:disabled{opacity:.55;cursor:not-allowed}
 .day-field input{text-align:center}
 .modal-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
 

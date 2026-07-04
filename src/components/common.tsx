@@ -284,17 +284,17 @@ export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate,
             ))}
           </div>
         </label>
-        {subs.length > 0 && (
-          <label className="field">
-            <span>Sub-category</span>
-            <div className="txv-select-wrap">
-              <select value={subcat} onChange={(e) => selectSub(e.target.value)}>
-                <option value="">— None —</option>
-                {subs.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
-          </label>
-        )}
+        <label className="field">
+          <span>Sub-category</span>
+          <div className="txv-select-wrap">
+            <select value={subcat} onChange={(e) => selectSub(e.target.value)} disabled={subs.length === 0}>
+              {subs.length === 0
+                ? <option value="">No sub-categories yet — add them in Categories</option>
+                : <option value="">— None —</option>}
+              {subs.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+        </label>
         <div className="field-row">
           <label className="field">
             <span>Merchant</span>
