@@ -5,3 +5,10 @@ import "./styles.css";
 const el = document.getElementById("root");
 if (!el) throw new Error("#root not found");
 createRoot(el).render(<App />);
+
+// PWA: offline app shell. Prod only — a service worker in dev would fight HMR.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => { /* offline support is best-effort */ });
+  });
+}

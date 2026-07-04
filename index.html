@@ -7,7 +7,7 @@
          'unsafe-inline' is required by the theme pre-paint script below and
          Vite's dev preamble; data:/blob: cover stored attachments (previews +
          the viewer); ws: covers dev HMR; fonts.g* are the only remote hosts. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; object-src 'self' data:; frame-src 'self' data: blob:; connect-src 'self' ws: wss:; base-uri 'self'; form-action 'self'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; media-src 'self' data: blob:; object-src 'self' data:; frame-src 'self' data: blob:; connect-src 'self' ws: wss:; base-uri 'self'; form-action 'self'" />
     <script>
       /* Pre-paint theme: apply the saved theme before React mounts so the page
          doesn't flash the default theme on reload. Mirrors src/data/storage.ts
@@ -28,9 +28,10 @@
       })();
     </script>
     <title>Ledger — Expense Tracker</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <meta name="theme-color" content="#4f8ff7" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
   </head>
   <body>
     <div id="root"></div>
