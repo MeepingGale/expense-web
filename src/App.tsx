@@ -73,6 +73,7 @@ export default function App() {
   const [txPage, setTxPage] = useState<number>(0);
   const [budget, setBudget] = useState<number>(stored?.budget ?? EXPENSE.monthlyBudget);
   const [currency, setCurrency] = useState<string>(stored?.currency ?? "USD");
+  const [saveFailed, setSaveFailed] = useState<boolean>(false);
 
   const catById = useMemo(() => Object.fromEntries(categories.map((c) => [c.id, c])), [categories]);
 
@@ -315,11 +316,17 @@ export default function App() {
     document.body.setAttribute("data-theme", t.theme);
   }, [t.theme]);
 
-  // persist state (v3 — settings + data; storage.ts migrates legacy v1/v2)
+  // persist state (v4; storage.ts migrates legacy blobs). Debounced: the blob
+  // includes attachment data URLs, so serializing on every keystroke would
+  // stringify megabytes repeatedly. Save failures (storage quota) surface as
+  // a banner instead of being swallowed — this app must not lose data silently.
   useEffect(() => {
-    const txByMonth: Record<string, Transaction[]> = {};
-    months.forEach((m) => { txByMonth[m.key] = m.transactions; });
-    save({ v: 4, txByMonth, categories, recurring, budget, currency, settings: t });
+    const timer = setTimeout(() => {
+      const txByMonth: Record<string, Transaction[]> = {};
+      months.forEach((m) => { txByMonth[m.key] = m.transactions; });
+      setSaveFailed(!save({ v: 4, txByMonth, categories, recurring, budget, currency, settings: t }));
+    }, 300);
+    return () => clearTimeout(timer);
   }, [months, categories, recurring, budget, currency, t]);
 
   const changeCurrency = (code: string) => setCurrency(code);
@@ -336,6 +343,12 @@ export default function App() {
 
   return (
     <div className="app" data-theme={t.theme} data-density={t.density} style={rootStyle}>
+      {saveFailed && (
+        <div className="save-warn" role="alert">
+          ⚠ Your latest changes could not be saved — browser storage is full. Remove some large
+          attachments (or export a CSV backup now) to avoid losing data when this tab closes.
+        </div>
+      )}
       <header className="topbar">
         <div className="tb-left">
           <div className="brand">

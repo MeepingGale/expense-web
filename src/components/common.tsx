@@ -185,6 +185,11 @@ export function TxDetail({ tx, catById, onClose, onEdit, onDelete }: TxDetailPro
   );
 }
 
+// Attachments live inside the single localStorage blob (~5MB quota, base64
+// inflates by a third) — cap each file so a few receipts can't blow the quota
+// and silently stop all saves.
+const MAX_ATTACHMENT_BYTES = 600 * 1024;
+
 export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate, maxDate, categories, catById }: AddExpenseProps) {
   const seedDate = editTx ? `${editTx.year ?? 0}-${pad2((editTx.month ?? 0) + 1)}-${pad2(editTx.day)}` : defaultDate;
   const [amount, setAmount] = useState<string>("");
@@ -194,6 +199,7 @@ export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate,
   const [date, setDate] = useState<string>(seedDate);
   const [need, setNeed] = useState<boolean>(true);
   const [files, setFiles] = useState<Attachment[]>([]);
+  const [fileErr, setFileErr] = useState<string>("");
   const [recurring, setRecurring] = useState<boolean>(false);
   const [ongoing, setOngoing] = useState<boolean>(true);
   const [until, setUntil] = useState<string>("");
@@ -214,7 +220,7 @@ export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate,
         setAmount(""); setCat(first); setSubcat(""); setMerchant(""); setDate(defaultDate);
         setNeed(true); setFiles([]);
       }
-      setRecurring(false); setOngoing(true); setUntil("");
+      setRecurring(false); setOngoing(true); setUntil(""); setFileErr("");
       setTimeout(() => amtRef.current && amtRef.current.focus(), 60);
     }
   }, [open]);
@@ -233,7 +239,11 @@ export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate,
 
   const onFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const list = [...(e.target.files || [])];
-    list.forEach((f) => {
+    const tooBig = list.filter((f) => f.size > MAX_ATTACHMENT_BYTES);
+    setFileErr(tooBig.length
+      ? `${tooBig.map((f) => `“${f.name}”`).join(", ")} skipped — attachments are kept in browser storage, so each file must stay under 600 KB.`
+      : "");
+    list.filter((f) => f.size <= MAX_ATTACHMENT_BYTES).forEach((f) => {
       const reader = new FileReader();
       reader.onload = () => setFiles((prev) => [...prev, { name: f.name, type: f.type, size: f.size, url: reader.result as string }]);
       reader.readAsDataURL(f);
@@ -349,6 +359,7 @@ export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate,
             <span>Add receipts or files</span>
             <input type="file" multiple accept="image/*,.pdf" onChange={onFiles} hidden />
           </label>
+          {fileErr && <p className="field-hint att-err">{fileErr}</p>}
           {files.length > 0 && (
             <div className="att-thumbs">
               {files.map((f, i) => (

@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen, fireEvent, within, cleanup } from "@testing-library/react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { render, screen, fireEvent, within, cleanup, act } from "@testing-library/react";
 import App from "./App";
 
 // Each test starts from a clean slate so persistence assertions are meaningful
@@ -86,6 +86,9 @@ describe("App — smoke + parity", () => {
   });
 
   it("persists a settings change across a full remount (regression for reset-on-reload)", () => {
+    // The save effect is debounced (300ms), so drive time with fake timers.
+    vi.useFakeTimers();
+
     // 1) Mount, go to Settings, flip density from the default "comfortable"
     //    to "compact" via the real toggle button.
     const first = render(<App />);
@@ -102,8 +105,10 @@ describe("App — smoke + parity", () => {
       "compact",
     );
 
-    // Sanity: it was actually written to localStorage (App's save effect).
+    // Let the debounced save flush, then it must be in localStorage.
+    act(() => { vi.advanceTimersByTime(400); });
     expect(localStorage.getItem("ledger-state-v1")).toContain('"density":"compact"');
+    vi.useRealTimers();
 
     // 2) Fully unmount and mount a FRESH <App/>. The new instance hydrates
     //    from localStorage via load() in its initial state.
