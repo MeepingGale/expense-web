@@ -32,44 +32,53 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: "subs",       name: "Subscriptions", hue: 258, subs: [] },
 ];
 
-// Builds the initial ledger state: an empty 12-month scaffold ending June 2026
-// plus default categories. There is no sample data — every month starts with
-// zero transactions and there are no recurring items, so the ledger opens
-// clean and the user enters their own expenses.
-export function buildSeed(today: Date = new Date()): ExpenseData {
-  // 12 consecutive months ending at the current (real) month — index 11.
-  const months: { year: number; month: number }[] = [];
-  const endYear = today.getFullYear(), endMonth = today.getMonth();
-  for (let i = 11; i >= 0; i--) {
-    let m = endMonth - i, y = endYear;
-    while (m < 0) { m += 12; y -= 1; }
-    months.push({ year: y, month: m });
-  }
-
-  const data: MonthData[] = months.map((mo) => {
-    const daysInMonth = new Date(mo.year, mo.month + 1, 0).getDate();
-    const isCurrent = mo.year === today.getFullYear() && mo.month === today.getMonth();
+// Contiguous empty months from `from` to `to` (inclusive). recompute()
+// zero-fills byCat / byDay / total for the empty transaction lists.
+export function monthScaffold(
+  from: { year: number; month: number },
+  to: { year: number; month: number },
+  today: Date,
+  categories: Category[],
+): MonthData[] {
+  const out: MonthData[] = [];
+  let y = from.year, m = from.month;
+  while (y < to.year || (y === to.year && m <= to.month)) {
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const isCurrent = y === today.getFullYear() && m === today.getMonth();
     const lastDay = isCurrent ? today.getDate() : daysInMonth;
-    // recompute() zero-fills byCat, empties byDay, and sets total to 0 for the
-    // empty transaction list — no need to duplicate that aggregation here.
-    return recompute(
+    out.push(recompute(
       {
-        key: `${mo.year}-${String(mo.month + 1).padStart(2, "0")}`,
-        year: mo.year,
-        month: mo.month,
-        label: `${MONTHS[mo.month]} ${mo.year}`,
-        shortLabel: MONTHS[mo.month].slice(0, 3),
+        key: `${y}-${String(m + 1).padStart(2, "0")}`,
+        year: y,
+        month: m,
+        label: `${MONTHS[m]} ${y}`,
+        shortLabel: MONTHS[m].slice(0, 3),
         daysInMonth,
         lastDay,
         isCurrent,
-        firstWeekday: new Date(mo.year, mo.month, 1).getDay(), // 0 = Sun
+        firstWeekday: new Date(y, m, 1).getDay(), // 0 = Sun
         transactions: [],
         isPartial: isCurrent && lastDay < daysInMonth,
       },
-      DEFAULT_CATEGORIES,
-    );
-  });
+      categories,
+    ));
+    if (m === 11) { m = 0; y += 1; } else { m += 1; }
+  }
+  return out;
+}
 
+// Builds the initial ledger state: an empty 12-month scaffold ending at the
+// current month plus default categories. There is no sample data — the ledger
+// opens clean and the user enters their own expenses. (App widens the scaffold
+// to cover older stored months on load.)
+export function buildSeed(today: Date = new Date()): ExpenseData {
+  const from = new Date(today.getFullYear(), today.getMonth() - 11, 1);
+  const data = monthScaffold(
+    { year: from.getFullYear(), month: from.getMonth() },
+    { year: today.getFullYear(), month: today.getMonth() },
+    today,
+    DEFAULT_CATEGORIES,
+  );
   return {
     categories: DEFAULT_CATEGORIES,
     months: data,

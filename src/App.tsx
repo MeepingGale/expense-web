@@ -10,7 +10,7 @@ import type {
   Settings,
   Transaction,
 } from "./types";
-import { buildSeed, recompute } from "./data/seed";
+import { buildSeed, recompute, monthScaffold } from "./data/seed";
 import { load, save, DEFAULT_SETTINGS } from "./data/storage";
 import { catColor, fmtUSD, setLedgerCurrency, pad2, toDateInput, ordinal } from "./data/format";
 import { CURRENCIES, WEEKDAYS } from "./data/constants";
@@ -46,15 +46,28 @@ export default function App() {
   const setTweak = useCallback<SetSetting>((key, value) =>
     setT((prev) => ({ ...prev, [key]: value })), []);
 
-  const [months, setMonths] = useState<MonthData[]>(() =>
-    EXPENSE.months.map((m) =>
-      recompute(
-        { ...m, transactions: stored?.txByMonth?.[m.key] ?? m.transactions },
-        stored?.categories ?? EXPENSE.categories,
-      ),
-    ),
-  );
-  const [idx, setIdx] = useState<number>(EXPENSE.currentIndex);
+  // Initial months: the seed's trailing-12 scaffold, widened backward to the
+  // earliest stored month that has transactions — old data must never silently
+  // age out of the window — then merged with the stored transactions.
+  const initialMonths = useMemo<MonthData[]>(() => {
+    const cats = stored?.categories ?? EXPENSE.categories;
+    let scaffold = EXPENSE.months;
+    const earliest = Object.entries(stored?.txByMonth ?? {})
+      .filter(([, txs]) => (txs?.length ?? 0) > 0)
+      .map(([k]) => k)
+      .sort()[0];
+    if (earliest && earliest < scaffold[0].key) {
+      const [y, m] = earliest.split("-").map(Number);
+      const last = scaffold[scaffold.length - 1];
+      scaffold = monthScaffold({ year: y, month: m - 1 }, { year: last.year, month: last.month }, EXPENSE.today, cats);
+    }
+    return scaffold.map((m) =>
+      recompute({ ...m, transactions: stored?.txByMonth?.[m.key] ?? m.transactions }, cats),
+    );
+  }, [EXPENSE, stored]);
+
+  const [months, setMonths] = useState<MonthData[]>(initialMonths);
+  const [idx, setIdx] = useState<number>(initialMonths.length - 1);
   const [hoverCat, setHoverCat] = useState<CategoryId | null>(null);
   const [filterCat, setFilterCat] = useState<CategoryId | null>(null);
   const [adding, setAdding] = useState<boolean>(false);
@@ -199,19 +212,42 @@ export default function App() {
   // route transactions to the right month by date (supports back-dating + bulk)
   const routeInsert = (items: InsertItem[]) => {
     setMonths((prevM) => {
+      // A tab left open across a month boundary: the live date picker allows
+      // days in months the mount-time scaffold doesn't have yet. Extend the
+      // scaffold forward instead of silently dropping the transaction.
+      let base = prevM;
+      const last = prevM[prevM.length - 1];
+      const maxKey = items.reduce((mx, it) => {
+        const k = `${it.year}-${pad2(it.month + 1)}`;
+        return k > mx ? k : mx;
+      }, last.key);
+      if (maxKey > last.key) {
+        const [y, m] = maxKey.split("-").map(Number);
+        const ext = monthScaffold(
+          { year: last.month === 11 ? last.year + 1 : last.year, month: (last.month + 1) % 12 },
+          { year: y, month: m - 1 },
+          new Date(),
+          categories,
+        );
+        // the previously-current month is over — clear its stale flags
+        base = [
+          ...prevM.map((mm) => (mm.isCurrent ? { ...mm, isCurrent: false, isPartial: false, lastDay: mm.daysInMonth } : mm)),
+          ...ext,
+        ];
+      }
       const touched: Record<number, MonthData> = {};
       items.forEach((it) => {
         const key = `${it.year}-${pad2(it.month + 1)}`;
-        const i = prevM.findIndex((m) => m.key === key);
-        if (i < 0) return;
-        if (!touched[i]) touched[i] = { ...prevM[i], transactions: [...prevM[i].transactions] };
+        const i = base.findIndex((m) => m.key === key);
+        if (i < 0) return; // before the scaffold start — unreachable via the UI (minDate)
+        if (!touched[i]) touched[i] = { ...base[i], transactions: [...base[i].transactions] };
         touched[i].transactions.push({
           id: `tx-${it.year}-${it.month}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           day: it.day, cat: it.cat, subcat: it.subcat ?? null, amount: it.amount, merchant: it.merchant,
           need: it.need, attachments: it.attachments || [], recurId: it.recurId || null, _new: true,
         });
       });
-      return prevM.map((m, i) => (touched[i] ? recompute(touched[i], categories) : m));
+      return base.map((m, i) => (touched[i] ? recompute(touched[i], categories) : m));
     });
   };
 

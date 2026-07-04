@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildSeed, recompute } from "./seed";
+import { buildSeed, recompute, monthScaffold } from "./seed";
 import type { Category, MonthData, Transaction } from "../types";
 
 const TODAY = new Date(2026, 5, 23); // fixed reference so assertions stay deterministic
@@ -36,6 +36,22 @@ describe("buildSeed", () => {
     const ids = buildSeed(TODAY).categories.map((c) => c.id);
     expect(ids.length).toBeGreaterThan(0);
     expect(ids).toContain("groceries");
+  });
+});
+
+describe("monthScaffold", () => {
+  it("spans a year boundary contiguously", () => {
+    const months = monthScaffold({ year: 2025, month: 10 }, { year: 2026, month: 1 }, TODAY, []);
+    expect(months.map((m) => m.key)).toEqual(["2025-11", "2025-12", "2026-01", "2026-02"]);
+    expect(months.every((m) => m.transactions.length === 0 && m.total === 0)).toBe(true);
+  });
+
+  it("marks only today's month current/partial", () => {
+    const months = monthScaffold({ year: 2026, month: 4 }, { year: 2026, month: 5 }, TODAY, []);
+    expect(months.map((m) => m.isCurrent)).toEqual([false, true]);
+    expect(months[1].lastDay).toBe(TODAY.getDate());
+    expect(months[1].isPartial).toBe(true);
+    expect(months[0].lastDay).toBe(months[0].daysInMonth);
   });
 });
 

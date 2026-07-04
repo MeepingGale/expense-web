@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, within, cleanup, act } from "@testing-library/react";
 import App from "./App";
+import { DEFAULT_SETTINGS } from "./data/storage";
 
 // Each test starts from a clean slate so persistence assertions are meaningful
 // and one test can't leak state into the next via localStorage.
@@ -172,5 +173,46 @@ describe("App — smoke + parity", () => {
     // The modal closes (onClose after submit) and the overview count grew by 1.
     expect(container.querySelector(".modal-tall")).toBeNull();
     expect(readCount()).toBe(before + 1);
+  });
+
+  it("keeps stored transactions older than the 12-month window (no aging-out)", () => {
+    // A transaction 14 months back — outside the seed's trailing-12 scaffold.
+    const now = new Date();
+    const old = new Date(now.getFullYear(), now.getMonth() - 14, 1);
+    const key = `${old.getFullYear()}-${String(old.getMonth() + 1).padStart(2, "0")}`;
+    localStorage.setItem("ledger-state-v1", JSON.stringify({
+      v: 4,
+      txByMonth: { [key]: [{ id: "old1", day: 3, cat: "dining", subcat: null, amount: 55, merchant: "Old Cafe", need: false, recurId: null }] },
+      categories: [{ id: "dining", name: "Dining", hue: 22, subs: [] }],
+      recurring: [], budget: 3800, currency: "USD", settings: DEFAULT_SETTINGS,
+    }));
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Transactions" }));
+    // The old transaction is visible — the scaffold widened to include its month.
+    expect(screen.getByText("Old Cafe")).toBeInTheDocument();
+  });
+
+  it("extends the scaffold on month rollover instead of dropping the expense", () => {
+    vi.useFakeTimers();
+    // Mount now — the scaffold ends at the real current month.
+    const { container } = render(<App />);
+    // The tab stays open into the NEXT month.
+    const now = new Date();
+    const next = new Date(now.getFullYear(), now.getMonth() + 1, 5);
+    vi.setSystemTime(next);
+
+    // Add an expense; the live default date is now in a month the scaffold lacks.
+    fireEvent.click(container.querySelector(".add-btn") as HTMLElement);
+    const form = container.querySelector(".modal-tall") as HTMLElement;
+    fireEvent.change(within(form).getByPlaceholderText("0.00"), { target: { value: "42" } });
+    fireEvent.click(form.querySelector('button[type="submit"]') as HTMLButtonElement);
+
+    act(() => { vi.advanceTimersByTime(500); }); // flush the debounced save
+    const blobKey = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
+    const blob = JSON.parse(localStorage.getItem("ledger-state-v1")!);
+    expect(blob.txByMonth[blobKey]?.length).toBe(1);       // NOT silently dropped
+    expect(blob.txByMonth[blobKey][0].amount).toBe(42);
+    vi.useRealTimers();
   });
 });
