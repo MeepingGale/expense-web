@@ -5,22 +5,32 @@ import type { Category, CategoryId, MonthData } from "../types";
 
 const _pad2e = (n: number) => String(n).padStart(2, "0");
 
-function exportCSV(months: MonthData[], catById: Record<CategoryId, Category>): void {
-  const rows: string[][] = [["Date", "Merchant", "Category", "Amount", "Type", "Recurring"]];
+// Cells a spreadsheet would evaluate as formulas (CWE-1236 CSV injection) get
+// a leading apostrophe — merchant names can arrive via pasted bank exports.
+const guardCell = (s: string): string => (/^[=+\-@\t\r]/.test(s) ? "'" + s : s);
+
+export function buildCSV(months: MonthData[], catById: Record<CategoryId, Category>): string {
+  const rows: string[][] = [["Date", "Merchant", "Category", "Sub-category", "Amount", "Type", "Recurring"]];
   months.forEach((m) => {
     [...m.transactions].sort((a, b) => a.day - b.day).forEach((tx) => {
+      const sub = tx.subcat ? catById[tx.cat]?.subs.find((s) => s.id === tx.subcat)?.name ?? "" : "";
       rows.push([
         `${m.year}-${_pad2e(m.month + 1)}-${_pad2e(tx.day)}`,
         tx.merchant,
         (catById[tx.cat] && catById[tx.cat].name) || tx.cat,
+        sub,
         tx.amount.toFixed(2),
         tx.need ? "Need" : "Want",
         tx.recurId ? "Yes" : "No",
       ]);
     });
   });
-  const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  // BOM so Excel detects UTF-8 (accented merchant names) correctly.
+  return "﻿" + rows.map((r) => r.map((c) => `"${guardCell(String(c)).replace(/"/g, '""')}"`).join(",")).join("\n");
+}
+
+function exportCSV(months: MonthData[], catById: Record<CategoryId, Category>): void {
+  const blob = new Blob([buildCSV(months, catById)], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url; a.download = "ledger-transactions.csv";
@@ -94,7 +104,10 @@ export function PrintReport({ month, categories, catById, budget }: PrintReportP
       <div className="pr-stats">
         <div className="pr-stat"><span>Transactions</span><b>{month.transactions.length}</b></div>
         <div className="pr-stat"><span>Avg / day</span><b>{fmtUSD(month.total / month.lastDay, true)}</b></div>
-        <div className="pr-stat"><span>{month.isPartial ? "Projected" : "vs budget"}</span><b>{fmtUSD(month.isPartial ? projected : budget)}</b></div>
+        <div className="pr-stat">
+          <span>{month.isPartial ? "Projected" : month.total > budget ? "Over budget by" : "Budget left"}</span>
+          <b>{fmtUSD(month.isPartial ? projected : Math.abs(budget - month.total))}</b>
+        </div>
         <div className="pr-stat"><span>Needs / Wants</span><b>{fmtUSD(need)} / {fmtUSD(want)}</b></div>
       </div>
 
@@ -114,13 +127,14 @@ export function PrintReport({ month, categories, catById, budget }: PrintReportP
 
       <h2 className="pr-h2">Transactions ({rows.length})</h2>
       <table className="pr-table">
-        <thead><tr><th>Date</th><th>Merchant</th><th>Category</th><th>Type</th><th className="pr-r">Amount</th></tr></thead>
+        <thead><tr><th>Date</th><th>Merchant</th><th>Category</th><th>Sub-category</th><th>Type</th><th className="pr-r">Amount</th></tr></thead>
         <tbody>
           {rows.map((tx) => (
             <tr key={tx.id}>
               <td>{month.shortLabel} {tx.day}</td>
               <td>{tx.merchant}</td>
               <td>{(catById[tx.cat] && catById[tx.cat].name) || ""}</td>
+              <td>{tx.subcat ? catById[tx.cat]?.subs.find((s) => s.id === tx.subcat)?.name ?? "" : ""}</td>
               <td>{tx.need ? "Need" : "Want"}</td>
               <td className="pr-r">{fmtUSD(tx.amount, true)}</td>
             </tr>
