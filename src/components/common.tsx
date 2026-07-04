@@ -97,6 +97,29 @@ export function ThemeMenu({ theme, onChange }: ThemeMenuProps) {
   );
 }
 
+// Modal keyboard behavior: Escape closes, Tab cycles focus inside the modal
+// (minimal focus trap). Call before any early return; inert while !open.
+export function useModalKeys(open: boolean, onClose: () => void, ref: React.RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.stopPropagation(); onClose(); return; }
+      if (e.key === "Tab" && ref.current) {
+        const els = ref.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        );
+        const focusables = [...els].filter((el) => !el.hasAttribute("disabled"));
+        if (!focusables.length) return;
+        const first = focusables[0], last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
+  }, [open, onClose, ref]);
+}
+
 // Chrome blocks top-level navigation to data: URLs, so a plain <a href={dataUrl}>
 // silently does nothing — convert to a blob object URL and open that instead.
 function openAttachment(url: string) {
@@ -111,14 +134,16 @@ function openAttachment(url: string) {
 
 export function TxDetail({ tx, catById, onClose, onEdit, onDelete }: TxDetailProps) {
   const [confirmDel, setConfirmDel] = useState<boolean>(false);
+  const modalRef = useRef<HTMLDivElement>(null);
   React.useEffect(() => { setConfirmDel(false); }, [tx]);
+  useModalKeys(!!tx, onClose, modalRef);
   if (!tx) return null;
   const c = catById[tx.cat] || { name: "Uncategorized", hue: 256 };
   const sub = tx.subcat ? catById[tx.cat]?.subs.find((s) => s.id === tx.subcat) : undefined;
   const atts: Attachment[] = tx.attachments || [];
   return (
     <div className="modal-scrim" onMouseDown={onClose}>
-      <div className="modal td-modal" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="modal td-modal" ref={modalRef} onMouseDown={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <div className="td-title">
             <span className="td-cat-dot" style={{ background: catColor(c.hue) }} />
@@ -217,6 +242,8 @@ export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate,
   const [ongoing, setOngoing] = useState<boolean>(true);
   const [until, setUntil] = useState<string>("");
   const amtRef = useRef<HTMLInputElement>(null);
+  const modalRef = useRef<HTMLFormElement>(null);
+  useModalKeys(open, onClose, modalRef);
   const minStr = minDate, maxStr = maxDate;
   const untilMin = date.slice(0, 7);
   const maxYear = parseInt(maxDate.slice(0, 4), 10);
@@ -283,7 +310,7 @@ export function AddExpense({ open, onClose, onAdd, editTx, defaultDate, minDate,
   };
   return (
     <div className="modal-scrim" onMouseDown={onClose}>
-      <form className="modal modal-tall" onMouseDown={(e) => e.stopPropagation()} onSubmit={submit}>
+      <form className="modal modal-tall" ref={modalRef} onMouseDown={(e) => e.stopPropagation()} onSubmit={submit}>
         <div className="modal-head">
           <h3>{editTx ? "Edit expense" : "Add expense"}</h3>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button>

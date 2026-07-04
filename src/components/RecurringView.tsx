@@ -1,7 +1,8 @@
 /* Recurring expenses: add new, edit amount, stop / resume, set an end date. */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { catColor, fmtUSD, currencySymbol, groupDigits, pad2, ordinal } from "../data/format";
 import { MONTHS } from "../data/constants";
+import { useModalKeys } from "./common";
 import type { Category, CategoryId, RecurringItem } from "../types";
 
 function fmtEndKey(key: string | null | undefined): string | null {
@@ -173,6 +174,8 @@ export function AddRecurring({ open, today, onClose, onAdd, categories, catById 
   const [ongoing, setOngoing] = useState<boolean>(true);
   const [until, setUntil] = useState<string>("");
   const merchRef = React.useRef<HTMLInputElement>(null);
+  const modalRef = useRef<HTMLFormElement>(null);
+  useModalKeys(open, onClose, modalRef);
 
   useEffect(() => {
     if (open) {
@@ -210,7 +213,7 @@ export function AddRecurring({ open, today, onClose, onAdd, categories, catById 
 
   return (
     <div className="modal-scrim" onMouseDown={onClose}>
-      <form className="modal modal-tall" onMouseDown={(e) => e.stopPropagation()} onSubmit={submit}>
+      <form className="modal modal-tall" ref={modalRef} onMouseDown={(e) => e.stopPropagation()} onSubmit={submit}>
         <div className="modal-head">
           <div>
             <h3>Add recurring expense</h3>

@@ -1,6 +1,7 @@
 /* Bulk add transactions: paste-to-parse + editable grid, any date up to today. */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { fmtUSD, toDateInput, currencySymbol, groupDigits } from "../data/format";
+import { useModalKeys } from "./common";
 import type { Category, CategoryId } from "../types";
 
 // Internal editable-row shape (amount is the raw string from the input).
@@ -52,6 +53,8 @@ export function BulkAdd({ open, onClose, onInsert, categories, catById, minDate,
   const [rows, setRows] = useState<BulkEditRow[]>([]);
   const [paste, setPaste] = useState<string>("");
   const [showPaste, setShowPaste] = useState<boolean>(false);
+  const modalRef = useRef<HTMLDivElement>(null);
+  useModalKeys(open, onClose, modalRef);
 
   useEffect(() => {
     if (open) { setRows([blank(), blank(), blank()]); setPaste(""); setShowPaste(false); }
@@ -122,7 +125,7 @@ export function BulkAdd({ open, onClose, onInsert, categories, catById, minDate,
 
   return (
     <div className="modal-scrim" onMouseDown={onClose}>
-      <div className="modal modal-wide" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="modal modal-wide" ref={modalRef} onMouseDown={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <div>
             <h3>Bulk add transactions</h3>
