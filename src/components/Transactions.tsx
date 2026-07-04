@@ -62,7 +62,11 @@ export function Transactions({ months, categories, catById, onAddClick, onBulkCl
   const filtered = useMemo<FlatTx[]>(() => {
     const q = query.trim().toLowerCase();
     return allTx.filter((tx) => {
-      if (q && !tx.merchant.toLowerCase().includes(q) && !(catById[tx.cat] && catById[tx.cat].name.toLowerCase().includes(q))) return false;
+      if (q) {
+        const c = catById[tx.cat];
+        const sub = tx.subcat ? c?.subs.find((s) => s.id === tx.subcat) : undefined;
+        if (!`${tx.merchant} ${c?.name ?? ""} ${sub?.name ?? ""}`.toLowerCase().includes(q)) return false;
+      }
       if (cats.size && !cats.has(tx.cat)) return false;
       if (range === "recent3" && tx.mi < lastIdx - 2) return false;
       if (range !== "all" && range !== "recent3" && tx.monthKey !== range) return false;
@@ -178,6 +182,7 @@ export function Transactions({ months, categories, catById, onAddClick, onBulkCl
             {g.rows.map((tx) => {
               const c = catById[tx.cat];
               if (!c) return null;
+              const sub = tx.subcat ? c.subs.find((s) => s.id === tx.subcat) : undefined;
               const hasAtt = tx.attachments && tx.attachments.length > 0;
               const open = () => onOpenTx({ ...tx, dateText: `${tx.monthLabel} ${tx.day}` });
               return (
@@ -193,7 +198,7 @@ export function Transactions({ months, categories, catById, onAddClick, onBulkCl
                     <span className="txv-merchant">{tx.merchant}
                       <span className={"need-tag " + (tx.need ? "is-need" : "is-want")}>{tx.need ? "Need" : "Want"}</span>
                     </span>
-                    <span className="txv-cat"><i style={{ background: catColor(c.hue) }} />{c.name}</span>
+                    <span className="txv-cat"><i style={{ background: catColor(c.hue) }} />{c.name}{sub ? ` · ${sub.name}` : ""}</span>
                   </div>
                   {hasAtt && tx.attachments && (
                     <span className="att-badge"

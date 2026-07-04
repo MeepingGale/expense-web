@@ -82,6 +82,7 @@ export interface RecurringItem {
   id: string;
   merchant: string;
   cat: CategoryId;
+  subcat?: string | null; // sub-category id; null/undefined = unassigned
   amount: number;
   day: number;
   need: boolean;

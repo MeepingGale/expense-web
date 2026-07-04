@@ -42,6 +42,7 @@ export function RecurringRow({ item, catById, onEditAmount, onToggle }: Recurrin
   const [editing, setEditing] = useState<boolean>(false);
   const [draft, setDraft] = useState<string>(String(item.amount));
   const c = catById[item.cat] || { name: "Uncategorized", hue: 256 };
+  const sub = item.subcat ? catById[item.cat]?.subs.find((s) => s.id === item.subcat) : undefined;
 
   const startEdit = () => { setDraft(String(item.amount)); setEditing(true); };
   const save = () => {
@@ -58,7 +59,7 @@ export function RecurringRow({ item, catById, onEditAmount, onToggle }: Recurrin
         <span className="rec-merchant">{item.merchant}
           <span className={"need-tag " + (item.need ? "is-need" : "is-want")}>{item.need ? "Need" : "Want"}</span>
         </span>
-        <span className="rec-meta">{c.name} · Monthly on the {ordinal(item.day)} · {end ? `until ${end}` : "ongoing"}</span>
+        <span className="rec-meta">{c.name}{sub ? ` · ${sub.name}` : ""} · Monthly on the {ordinal(item.day)} · {end ? `until ${end}` : "ongoing"}</span>
       </div>
 
       {item.active
@@ -159,12 +160,13 @@ export function RecurringView({ recurring, catById, today, onEditAmount, onToggl
   );
 }
 
-export function AddRecurring({ open, today, onClose, onAdd, categories }: AddRecurringProps) {
+export function AddRecurring({ open, today, onClose, onAdd, categories, catById }: AddRecurringProps) {
   const first = categories[0] ? categories[0].id : "";
   const minMonth = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}`;
   const maxMonth = `${today.getFullYear() + 10}-12`;
   const [merchant, setMerchant] = useState<string>("");
   const [cat, setCat] = useState<CategoryId>(first);
+  const [subcat, setSubcat] = useState<string>("");
   const [amount, setAmount] = useState<string>("");
   const [day, setDay] = useState<number | string>(1);
   const [need, setNeed] = useState<boolean>(true);
@@ -174,7 +176,7 @@ export function AddRecurring({ open, today, onClose, onAdd, categories }: AddRec
 
   useEffect(() => {
     if (open) {
-      setMerchant(""); setCat(first); setAmount(""); setDay(1);
+      setMerchant(""); setCat(first); setSubcat(""); setAmount(""); setDay(1);
       setNeed(true);
       setOngoing(true); setUntil("");
       setTimeout(() => merchRef.current && merchRef.current.focus(), 60);
@@ -182,7 +184,13 @@ export function AddRecurring({ open, today, onClose, onAdd, categories }: AddRec
   }, [open]);
 
   if (!open) return null;
-  const selectCat = (id: CategoryId) => { setCat(id); setNeed(true); };
+  const subs = catById[cat]?.subs ?? [];
+  const selectCat = (id: CategoryId) => { setCat(id); setSubcat(""); setNeed(true); };
+  const selectSub = (id: string) => {
+    setSubcat(id);
+    const s = subs.find((x) => x.id === id);
+    if (s) setNeed(s.essential);
+  };
   const valid = parseFloat(amount) > 0 && merchant.trim() && (ongoing || until);
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -191,6 +199,7 @@ export function AddRecurring({ open, today, onClose, onAdd, categories }: AddRec
     onAdd({
       merchant: merchant.trim(),
       cat,
+      subcat: subcat || null,
       amount: Math.round(parseFloat(amount) * 100) / 100,
       day: Math.min(31, Math.max(1, parseInt(String(day), 10) || 1)),
       need,
@@ -235,6 +244,18 @@ export function AddRecurring({ open, today, onClose, onAdd, categories }: AddRec
             ))}
           </div>
         </label>
+
+        {subs.length > 0 && (
+          <label className="field">
+            <span>Sub-category</span>
+            <div className="txv-select-wrap">
+              <select value={subcat} onChange={(e) => selectSub(e.target.value)}>
+                <option value="">— None —</option>
+                {subs.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+          </label>
+        )}
 
         <div className="field-row fr-day">
           <label className="field day-field">

@@ -102,6 +102,7 @@ export function TxDetail({ tx, catById, onClose, onEdit, onDelete }: TxDetailPro
   React.useEffect(() => { setConfirmDel(false); }, [tx]);
   if (!tx) return null;
   const c = catById[tx.cat] || { name: "Uncategorized", hue: 256 };
+  const sub = tx.subcat ? catById[tx.cat]?.subs.find((s) => s.id === tx.subcat) : undefined;
   const atts: Attachment[] = tx.attachments || [];
   return (
     <div className="modal-scrim" onMouseDown={onClose}>
@@ -125,6 +126,7 @@ export function TxDetail({ tx, catById, onClose, onEdit, onDelete }: TxDetailPro
         <div className="td-meta">
           <div className="td-meta-row"><span>Date</span><b>{tx.dateText}{tx.weekday ? ` · ${tx.weekday}` : ""}</b></div>
           <div className="td-meta-row"><span>Category</span><b className="td-meta-cat"><i style={{ background: catColor(c.hue) }} />{c.name}</b></div>
+          {sub && <div className="td-meta-row"><span>Sub-category</span><b className="td-meta-cat"><i style={{ background: catColor(sub.hue) }} />{sub.name}</b></div>}
           <div className="td-meta-row"><span>Type</span><b>{tx.need ? "Necessity" : "Discretionary"}</b></div>
           {tx.recurId && <div className="td-meta-row"><span>Recurring</span><b className="td-recur">↻ Monthly</b></div>}
         </div>

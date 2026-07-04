@@ -224,7 +224,7 @@ export default function App() {
     let recurId: string | null = null;
     if (item.recurring) {
       recurId = `user-${Date.now()}`;
-      setRecurring((prev) => [...prev, { id: recurId!, merchant: item.merchant, cat: item.cat,
+      setRecurring((prev) => [...prev, { id: recurId!, merchant: item.merchant, cat: item.cat, subcat: item.subcat,
         amount: item.amount, day: item.day, need: item.need, endKey: item.recurring!.endKey, active: true }]);
     }
     routeInsert([{ ...item, recurId }]);
@@ -261,8 +261,8 @@ export default function App() {
       if (!m.isCurrent) return m;
       if (item.day <= m.lastDay && !m.transactions.some((tx) => tx.recurId === recurId)) {
         return recompute({ ...m, transactions: [...m.transactions, {
-          id: `tx-${m.year}-${m.month}-${recurId}`, day: item.day, cat: item.cat, amount: item.amount,
-          merchant: item.merchant, need: item.need, attachments: [], recurId, _new: true }] }, categories);
+          id: `tx-${m.year}-${m.month}-${recurId}`, day: item.day, cat: item.cat, subcat: item.subcat ?? null,
+          amount: item.amount, merchant: item.merchant, need: item.need, attachments: [], recurId, _new: true }] }, categories);
       }
       return m;
     }));
@@ -287,8 +287,8 @@ export default function App() {
       }
       if (rec.day <= m.lastDay && !m.transactions.some((tx) => tx.recurId === id)) {
         return recompute({ ...m, transactions: [...m.transactions, {
-          id: `tx-${m.year}-${m.month}-${id}-resume`, day: rec.day, cat: rec.cat, amount: rec.amount,
-          merchant: rec.merchant, need: rec.need, attachments: [], recurId: id, _new: true }] }, categories);
+          id: `tx-${m.year}-${m.month}-${id}-resume`, day: rec.day, cat: rec.cat, subcat: rec.subcat ?? null,
+          amount: rec.amount, merchant: rec.merchant, need: rec.need, attachments: [], recurId: id, _new: true }] }, categories);
       }
       return m;
     }));
@@ -547,6 +547,7 @@ export default function App() {
             {pagedTx.map((tx) => {
               const c = catById[tx.cat];
               if (!c) return null;
+              const sub = tx.subcat ? c.subs.find((s) => s.id === tx.subcat) : undefined;
               const hasAtt = tx.attachments && tx.attachments.length > 0;
               return (
                 <div key={tx.id} className={"tx-row clickable" + (tx._new ? " is-new" : "")}
@@ -555,7 +556,7 @@ export default function App() {
                   <span className="tx-dot" style={{ background: catColor(c.hue) }} />
                   <div className="tx-main">
                     <span className="tx-merchant">{tx.merchant}</span>
-                    <span className="tx-cat">{c.name}<span className={"need-tag " + (tx.need ? "is-need" : "is-want")}>{tx.need ? "Need" : "Want"}</span></span>
+                    <span className="tx-cat">{c.name}{sub ? ` · ${sub.name}` : ""}<span className={"need-tag " + (tx.need ? "is-need" : "is-want")}>{tx.need ? "Need" : "Want"}</span></span>
                   </div>
                   {hasAtt && tx.attachments && (
                     <span className="att-badge" title={`${tx.attachments.length} attachment${tx.attachments.length > 1 ? "s" : ""}`}>
