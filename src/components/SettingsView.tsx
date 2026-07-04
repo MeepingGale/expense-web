@@ -14,13 +14,17 @@ interface SettingsViewProps {
   // re-homed from the dropped tweaks panel:
   settings: Settings;
   onSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
+  onExportBackup: () => void;
+  onImportBackup: (file: File) => void;
 }
 
 export function SettingsView({
   budget, onBudget, currency, onCurrency, currencies, onReset, settings, onSetting,
+  onExportBackup, onImportBackup,
 }: SettingsViewProps) {
   const [draft, setDraft] = useState(String(budget));
   const [confirmReset, setConfirmReset] = useState(false);
+  const [pendingImport, setPendingImport] = useState<File | null>(null);
   useEffect(() => { setDraft(String(budget)); }, [budget]);
 
   const cur = currencies.find((c) => c.code === currency) || currencies[0];
@@ -120,6 +124,37 @@ export function SettingsView({
               <button type="button" className={!settings.budgetLine ? "on" : ""}
                 onClick={() => onSetting("budgetLine", false)}>Off</button>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="card setv-card">
+        <div className="setv-row">
+          <div className="setv-label">
+            <h2>Backup</h2>
+            <p>Download everything as a JSON file — transactions, attachments, categories, settings — or restore one.</p>
+          </div>
+          <div className="setv-control setv-backup">
+            {pendingImport ? (
+              <div className="setv-confirm">
+                <span>Replace all current data with “{pendingImport.name}”?</span>
+                <button className="btn ghost" onClick={() => setPendingImport(null)}>Cancel</button>
+                <button className="btn danger" onClick={() => onImportBackup(pendingImport)}>Restore</button>
+              </div>
+            ) : (
+              <>
+                <button className="btn ghost" onClick={onExportBackup}>Download backup</button>
+                <label className="btn ghost">
+                  Restore backup
+                  <input type="file" accept=".json,application/json" hidden
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) setPendingImport(f);
+                      e.target.value = "";
+                    }} />
+                </label>
+              </>
+            )}
           </div>
         </div>
       </section>

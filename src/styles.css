@@ -393,6 +393,8 @@ body{
 .need-toggle button.on{border-color:var(--accent);background:color-mix(in oklab,var(--accent) 15%,var(--card-2));color:var(--text)}
 .field-hint{margin:8px 0 0;font-size:11.5px;color:var(--text-faint)}
 .att-err{color:var(--danger)}
+.setv-backup{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
+.setv-backup label.btn{display:inline-flex;align-items:center;cursor:pointer}
 .save-warn{position:sticky;top:0;z-index:60;background:color-mix(in oklab,var(--danger) 16%,var(--card));
   border-bottom:1px solid var(--danger);color:var(--text);padding:9px 16px;font-size:13px;font-weight:600;text-align:center}
 

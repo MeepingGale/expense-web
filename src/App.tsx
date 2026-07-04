@@ -11,7 +11,7 @@ import type {
   Transaction,
 } from "./types";
 import { buildSeed, recompute, monthScaffold } from "./data/seed";
-import { load, save, DEFAULT_SETTINGS } from "./data/storage";
+import { load, save, DEFAULT_SETTINGS, STORAGE_KEY } from "./data/storage";
 import { catColor, fmtUSD, setLedgerCurrency, pad2, toDateInput, ordinal } from "./data/format";
 import { CURRENCIES, WEEKDAYS } from "./data/constants";
 import { Delta, Paperclip, KpiCard, ThemeMenu, TxDetail, AddExpense } from "./components/common";
@@ -399,6 +399,46 @@ export default function App() {
 
   const changeCurrency = (code: string) => setCurrency(code);
 
+  // repeat a purchase today: same merchant/category/sub/amount, no attachments
+  // (receipts belong to the original purchase)
+  const duplicateTransaction = (tx: Transaction) => {
+    const now = new Date();
+    routeInsert([{ year: now.getFullYear(), month: now.getMonth(), day: now.getDate(),
+      cat: tx.cat, subcat: tx.subcat ?? null, amount: tx.amount, merchant: tx.merchant, need: tx.need }]);
+    setViewerTx(null);
+    const key = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
+    const i = months.findIndex((m) => m.key === key);
+    if (i >= 0) setIdx(i);
+  };
+
+  // full-fidelity JSON backup (CSV is lossy: no attachments/subs/settings)
+  const exportBackup = () => {
+    const txByMonth: Record<string, Transaction[]> = {};
+    months.forEach((m) => { txByMonth[m.key] = m.transactions; });
+    const data = JSON.stringify({ v: 4, txByMonth, categories, recurring, budget, currency, settings: t }, null, 2);
+    const url = URL.createObjectURL(new Blob([data], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = `ledger-backup-${toDateInput(new Date())}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const importBackup = (file: File) => {
+    file.text().then((text) => {
+      let parsed: { v?: unknown } | null = null;
+      try { parsed = JSON.parse(text); } catch { /* rejected below */ }
+      if (!parsed || typeof parsed !== "object" || typeof parsed.v !== "number" || parsed.v < 1 || parsed.v > 4) {
+        alert("That file isn't a Ledger backup."); return;
+      }
+      try {
+        const current = localStorage.getItem(STORAGE_KEY);
+        if (current) localStorage.setItem(`${STORAGE_KEY}-pre-import`, current); // escape hatch
+        localStorage.setItem(STORAGE_KEY, text);
+      } catch { alert("Couldn't store the backup — browser storage is full."); return; }
+      location.reload(); // the boot path validates + migrates the imported blob
+    });
+  };
+
   const resetData = () => {
     setMonths(EXPENSE.months.map((m) => recompute(m, EXPENSE.categories)));
     setCategories(EXPENSE.categories.map((c) => ({ ...c })));
@@ -479,7 +519,8 @@ export default function App() {
       {view === "settings" && (
         <SettingsView budget={budget} onBudget={setBudget}
           currency={currency} onCurrency={changeCurrency}
-          currencies={CURRENCIES} onReset={resetData} settings={t} onSetting={setTweak} />
+          currencies={CURRENCIES} onReset={resetData} settings={t} onSetting={setTweak}
+          onExportBackup={exportBackup} onImportBackup={importBackup} />
       )}
       {view === "overview" && (
       <main className="grid">
@@ -679,6 +720,7 @@ export default function App() {
         categories={categories} catById={catById} today={EXPENSE.today} />
       <TxDetail tx={viewerTx} catById={catById} onClose={() => setViewerTx(null)}
         onEdit={(tx) => { setEditingTx(tx); setViewerTx(null); }}
+        onDuplicate={duplicateTransaction}
         onDelete={(tx) => { deleteTransaction(tx.id, tx.monthKey); setViewerTx(null); }} />
 
       <PrintReport month={month} categories={categories} catById={catById} budget={budget} />

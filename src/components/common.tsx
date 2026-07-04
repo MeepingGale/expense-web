@@ -14,6 +14,7 @@ interface TxDetailProps {
   catById: Record<CategoryId, Category>;
   onClose: () => void;
   onEdit: (tx: Transaction) => void;
+  onDuplicate: (tx: Transaction) => void;
   onDelete: (tx: Transaction) => void;
 }
 interface AddExpenseProps {
@@ -187,7 +188,7 @@ function openAttachment(url: string) {
     });
 }
 
-export function TxDetail({ tx, catById, onClose, onEdit, onDelete }: TxDetailProps) {
+export function TxDetail({ tx, catById, onClose, onEdit, onDuplicate, onDelete }: TxDetailProps) {
   const [confirmDel, setConfirmDel] = useState<boolean>(false);
   const modalRef = useRef<HTMLDivElement>(null);
   React.useEffect(() => { setConfirmDel(false); }, [tx]);
@@ -269,6 +270,10 @@ export function TxDetail({ tx, catById, onClose, onEdit, onDelete }: TxDetailPro
             <button type="button" className="btn ghost td-del" onClick={() => setConfirmDel(true)}>
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 4.5h10M6.5 4V3h3v1M5 4.5l.5 8h5l.5-8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
               Delete
+            </button>
+            <button type="button" className="btn ghost" onClick={() => onDuplicate(tx)} title="Repeat this expense today">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M10.5 5.5V4a1.5 1.5 0 00-1.5-1.5H4A1.5 1.5 0 002.5 4v5A1.5 1.5 0 004 10.5h1.5" stroke="currentColor" strokeWidth="1.4"/></svg>
+              Duplicate
             </button>
             <button type="button" className="btn primary" onClick={() => onEdit(tx)}>Edit</button>
           </div>
