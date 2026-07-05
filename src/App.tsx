@@ -80,6 +80,7 @@ export default function App() {
   const [adding, setAdding] = useState<boolean>(false);
   const [bulk, setBulk] = useState<boolean>(false);
   const [addingRecurring, setAddingRecurring] = useState<boolean>(false);
+  const [editingRec, setEditingRec] = useState<RecurringItem | null>(null);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [view, setView] = useState<string>("overview");
   const [categories, setCategories] = useState<Category[]>(
@@ -386,6 +387,17 @@ export default function App() {
   };
 
   // ----- recurring management -----
+  // full edit: patch the item, and reflect everything except the day on this
+  // month's already-posted charge (a new day takes effect from next month)
+  const editRecurringFull = (id: string, item: Omit<RecurringItem, "id" | "active">) => {
+    setRecurring((prev) => prev.map((r) => (r.id === id ? { ...r, ...item } : r)));
+    setMonths((prevM) => prevM.map((m) => (m.isCurrent
+      ? recompute({ ...m, transactions: m.transactions.map((tx) => (tx.recurId === id
+          ? { ...tx, cat: item.cat, subcat: item.subcat ?? null, amount: item.amount, merchant: item.merchant, need: item.need, _new: true }
+          : tx)) }, categories)
+      : m)));
+  };
+
   const editRecurringAmount = (id: string, amount: number) => {
     setRecurring((prev) => prev.map((r) => (r.id === id ? { ...r, amount } : r)));
     setMonths((prevM) => prevM.map((m) => (m.isCurrent
@@ -585,7 +597,8 @@ export default function App() {
       )}
       {view === "recurring" && (
         <RecurringView recurring={recurring} catById={catById}
-          onEditAmount={editRecurringAmount} onToggle={toggleRecurring} onAddClick={() => setAddingRecurring(true)}
+          onEditAmount={editRecurringAmount} onEditItem={setEditingRec}
+          onToggle={toggleRecurring} onAddClick={() => setAddingRecurring(true)}
           today={EXPENSE.today} />
       )}
       {view === "categories" && (
@@ -796,7 +809,9 @@ export default function App() {
       <BulkAdd open={bulk} onClose={() => setBulk(false)} onInsert={bulkInsert}
         categories={categories} catById={catById} minDate={minDate} maxDate={maxDate}
         merchantIndex={merchantIndex} />
-      <AddRecurring open={addingRecurring} onClose={() => setAddingRecurring(false)} onAdd={addRecurring}
+      <AddRecurring open={addingRecurring || !!editingRec} editItem={editingRec}
+        onClose={() => { setAddingRecurring(false); setEditingRec(null); }}
+        onAdd={addRecurring} onSave={editRecurringFull}
         categories={categories} catById={catById} today={EXPENSE.today} />
       <TxDetail tx={viewerTx} catById={catById} onClose={() => setViewerTx(null)}
         onEdit={(tx) => { setEditingTx(tx); setViewerTx(null); }}

@@ -18,6 +18,7 @@ interface RecurringRowProps {
   item: RecurringItem;
   catById: Record<CategoryId, Category>;
   onEditAmount: (id: string, amount: number) => void;
+  onEditItem: (item: RecurringItem) => void;
   onToggle: (id: string) => void;
 }
 
@@ -26,6 +27,7 @@ interface RecurringViewProps {
   catById: Record<CategoryId, Category>;
   today: Date;
   onEditAmount: (id: string, amount: number) => void;
+  onEditItem: (item: RecurringItem) => void;
   onToggle: (id: string) => void;
   onAddClick: () => void;
 }
@@ -35,11 +37,13 @@ interface AddRecurringProps {
   today: Date;
   onClose: () => void;
   onAdd: (item: NewRecurring) => void;
+  onSave: (id: string, item: NewRecurring) => void;
+  editItem: RecurringItem | null;
   categories: Category[];
   catById: Record<CategoryId, Category>;
 }
 
-export function RecurringRow({ item, catById, onEditAmount, onToggle }: RecurringRowProps) {
+export function RecurringRow({ item, catById, onEditAmount, onEditItem, onToggle }: RecurringRowProps) {
   const [editing, setEditing] = useState<boolean>(false);
   const [draft, setDraft] = useState<string>(String(item.amount));
   const c = catById[item.cat] || { name: "Uncategorized", hue: 256 };
@@ -84,6 +88,9 @@ export function RecurringRow({ item, catById, onEditAmount, onToggle }: Recurrin
         )}
       </div>
 
+      <button className="cat-edit-btn sm rec-edit-btn" onClick={() => onEditItem(item)} title="Edit recurring" aria-label={"Edit " + item.merchant}>
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M11.4 2.6a1.6 1.6 0 0 1 2.3 2.3L6 12.6l-3 .8.8-3 7.6-7.8z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      </button>
       <button className={"rec-toggle" + (item.active ? "" : " is-resume")} onClick={() => onToggle(item.id)}>
         {item.active ? "Stop" : "Resume"}
       </button>
@@ -91,7 +98,7 @@ export function RecurringRow({ item, catById, onEditAmount, onToggle }: Recurrin
   );
 }
 
-export function RecurringView({ recurring, catById, today, onEditAmount, onToggle, onAddClick }: RecurringViewProps) {
+export function RecurringView({ recurring, catById, today, onEditAmount, onEditItem, onToggle, onAddClick }: RecurringViewProps) {
   const active = recurring.filter((r) => r.active);
   const monthlyTotal = active.reduce((s, r) => s + r.amount, 0);
   const needTotal = active.filter((r) => r.need).reduce((s, r) => s + r.amount, 0);
@@ -149,7 +156,7 @@ export function RecurringView({ recurring, catById, today, onEditAmount, onToggl
       <div className="card recv-list">
         <div className="recv-note">Changing an amount applies to this month onward — past months keep what you actually paid. Stopping cancels future charges.</div>
         {recurring.map((item) => (
-          <RecurringRow key={item.id} item={item} catById={catById} onEditAmount={onEditAmount} onToggle={onToggle} />
+          <RecurringRow key={item.id} item={item} catById={catById} onEditAmount={onEditAmount} onEditItem={onEditItem} onToggle={onToggle} />
         ))}
         {recurring.length === 0 && <div className="tx-empty">No recurring expenses yet. Add one to track subscriptions, rent, and bills.</div>}
       </div>
@@ -157,7 +164,7 @@ export function RecurringView({ recurring, catById, today, onEditAmount, onToggl
   );
 }
 
-export function AddRecurring({ open, today, onClose, onAdd, categories, catById }: AddRecurringProps) {
+export function AddRecurring({ open, today, onClose, onAdd, onSave, editItem, categories, catById }: AddRecurringProps) {
   const first = categories[0] ? categories[0].id : "";
   const minMonth = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}`;
   const maxMonth = `${today.getFullYear() + 10}-12`;
@@ -175,9 +182,15 @@ export function AddRecurring({ open, today, onClose, onAdd, categories, catById 
 
   useEffect(() => {
     if (open) {
-      setMerchant(""); setCat(first); setSubcat(""); setAmount(""); setDay(1);
-      setNeed(true);
-      setOngoing(true); setUntil("");
+      if (editItem) {
+        setMerchant(editItem.merchant); setCat(editItem.cat); setSubcat(editItem.subcat ?? "");
+        setAmount(String(editItem.amount)); setDay(editItem.day); setNeed(editItem.need);
+        setOngoing(!editItem.endKey); setUntil(editItem.endKey ?? "");
+      } else {
+        setMerchant(""); setCat(first); setSubcat(""); setAmount(""); setDay(1);
+        setNeed(true);
+        setOngoing(true); setUntil("");
+      }
       setTimeout(() => merchRef.current && merchRef.current.focus(), 60);
     }
   }, [open]);
@@ -195,7 +208,7 @@ export function AddRecurring({ open, today, onClose, onAdd, categories, catById 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!valid) return;
-    onAdd({
+    const payload: NewRecurring = {
       merchant: merchant.trim(),
       cat,
       subcat: subcat || null,
@@ -203,7 +216,9 @@ export function AddRecurring({ open, today, onClose, onAdd, categories, catById 
       day: Math.min(31, Math.max(1, parseInt(String(day), 10) || 1)),
       need,
       endKey: ongoing ? null : until,
-    });
+    };
+    if (editItem) onSave(editItem.id, payload);
+    else onAdd(payload);
     onClose();
   };
 
@@ -212,8 +227,8 @@ export function AddRecurring({ open, today, onClose, onAdd, categories, catById 
       <form className="modal modal-tall" ref={modalRef} onMouseDown={(e) => e.stopPropagation()} onSubmit={submit}>
         <div className="modal-head">
           <div>
-            <h3>Add recurring expense</h3>
-            <p className="td-sub">Charged automatically every month.</p>
+            <h3>{editItem ? "Edit recurring expense" : "Add recurring expense"}</h3>
+            <p className="td-sub">{editItem ? "Changes apply to this month’s charge onward; a new day starts next month." : "Charged automatically every month."}</p>
           </div>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
         </div>
@@ -283,7 +298,7 @@ export function AddRecurring({ open, today, onClose, onAdd, categories, catById 
 
         <div className="modal-foot">
           <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn primary" disabled={!valid}>Add recurring</button>
+          <button type="submit" className="btn primary" disabled={!valid}>{editItem ? "Save changes" : "Add recurring"}</button>
         </div>
       </form>
     </div>
