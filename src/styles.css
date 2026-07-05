@@ -787,12 +787,13 @@ body{
   .nav-tabs button.on{background:transparent;box-shadow:none;color:var(--accent)}
   .nav-ic{display:block}
   .app{padding-bottom:calc(74px + env(safe-area-inset-bottom))}
-  .month-nav{order:0;flex:1;justify-content:center;gap:2px;min-width:0}
-  .month-title{font-size:14px;white-space:nowrap}
+  .month-nav{order:0;flex:1;justify-content:center;gap:4px;min-width:0}
+  .month-display{min-width:0;flex:0 1 auto;padding:0 3px} /* base 138px min-width shoved the arrows apart */
+  .month-title{font-size:14px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
   .month-tag{display:none}
   .month-nav .icon-btn{width:30px;height:30px;flex-shrink:0}
-  .year-pick{margin-left:2px}
-  .year-pick select{padding:7px 24px 7px 9px;font-size:12px}
+  .year-pick{margin-left:4px}
+  .year-pick select{padding:7px 27px 7px 10px;font-size:12px}
   /* add/bulk leave the headers: the FAB adds, the Export popover bulk-adds */
   .topbar .add-btn,.topbar .bulk-btn,.txv-head .topbar-actions{display:none}
   .topbar-actions{margin-left:0;flex:0 0 auto;flex-wrap:nowrap;gap:6px}
