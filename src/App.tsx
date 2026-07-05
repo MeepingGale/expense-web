@@ -489,12 +489,28 @@ export default function App() {
             </div>
             <span className="brand-name">Ledger</span>
           </div>
+          {/* top tab bar on desktop; fixed bottom app bar on phones (see media CSS) */}
           <nav className="nav-tabs">
-            <button className={view === "overview" ? "on" : ""} onClick={() => setView("overview")}>Overview</button>
-            <button className={view === "transactions" ? "on" : ""} onClick={() => setView("transactions")}>Transactions</button>
-            <button className={view === "recurring" ? "on" : ""} onClick={() => setView("recurring")}>Recurring</button>
-            <button className={view === "categories" ? "on" : ""} onClick={() => setView("categories")}>Categories</button>
-            <button className={view === "settings" ? "on" : ""} onClick={() => setView("settings")}>Settings</button>
+            <button className={view === "overview" ? "on" : ""} onClick={() => setView("overview")}>
+              <svg className="nav-ic" width="17" height="17" viewBox="0 0 16 16" fill="none"><path d="M3 13V8m3.3 5V4m3.4 9V6.5M13 13V5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+              <span>Overview</span>
+            </button>
+            <button className={view === "transactions" ? "on" : ""} onClick={() => setView("transactions")}>
+              <svg className="nav-ic" width="17" height="17" viewBox="0 0 16 16" fill="none"><path d="M2.5 4h11M2.5 8h11M2.5 12h7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg>
+              <span>Transactions</span>
+            </button>
+            <button className={view === "recurring" ? "on" : ""} onClick={() => setView("recurring")}>
+              <svg className="nav-ic" width="17" height="17" viewBox="0 0 16 16" fill="none"><path d="M3 8a5 5 0 018.5-3.5L13 6M13 8a5 5 0 01-8.5 3.5L3 10M13 3v3h-3M3 13v-3h3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <span>Recurring</span>
+            </button>
+            <button className={view === "categories" ? "on" : ""} onClick={() => setView("categories")}>
+              <svg className="nav-ic" width="17" height="17" viewBox="0 0 16 16" fill="none"><path d="M2.5 2.5h5.2L14 8.8a1.4 1.4 0 010 2L10.8 14a1.4 1.4 0 01-2 0L2.5 7.7z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><circle cx="5.6" cy="5.6" r="1" fill="currentColor"/></svg>
+              <span>Categories</span>
+            </button>
+            <button className={view === "settings" ? "on" : ""} onClick={() => setView("settings")}>
+              <svg className="nav-ic" width="17" height="17" viewBox="0 0 16 16" fill="none"><path d="M3 5h10M3 11h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/><circle cx="6.2" cy="5" r="1.9" stroke="currentColor" strokeWidth="1.4"/><circle cx="9.8" cy="11" r="1.9" stroke="currentColor" strokeWidth="1.4"/></svg>
+              <span>Settings</span>
+            </button>
           </nav>
         </div>
 
