@@ -1,4 +1,4 @@
-import type { Category, CategoryId, ExpenseData, MonthData } from "../types";
+import type { Category, CategoryId, ExpenseData, MonthData, RecurringItem } from "../types";
 import { MONTHS } from "./constants";
 
 export function recompute(
@@ -33,6 +33,47 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: "fun",        name: "Entertainment", hue: 48,  subs: [] },
   { id: "subs",       name: "Subscriptions", hue: 258, subs: [] },
 ];
+
+// Materialize recurring charges that have come due. Historically a recurring
+// item only wrote a transaction when it was created or resumed, so a new
+// month never received its charges. For each active item, every month after
+// its first posted month (or the current month, for items that never posted)
+// gets the charge once its day has arrived — bounded by endKey, at most once
+// per month. Runs on load; a tab left open across midnight catches up on the
+// next reload.
+export function postDueRecurring(
+  months: MonthData[],
+  recurring: RecurringItem[],
+  categories: Category[],
+): MonthData[] {
+  const active = recurring.filter((r) => r.active);
+  if (!active.length || !months.length) return months;
+  const currentKey = months.find((m) => m.isCurrent)?.key ?? months[months.length - 1].key;
+  // first month that already has this item's charge — the posting anchor
+  const anchorOf = (id: string) => months.find((m) => m.transactions.some((t) => t.recurId === id))?.key;
+  let changed = false;
+  const next = months.map((m) => {
+    if (m.key > currentKey) return m;
+    let tx = m.transactions;
+    active.forEach((r) => {
+      const anchor = anchorOf(r.id);
+      if (anchor ? m.key <= anchor : m.key !== currentKey) return;
+      if (r.endKey && m.key > r.endKey) return;
+      // ponytail: day 31 items skip 30-day months (same rule as manual posting);
+      // clamp-to-last-day if that ever matters
+      if (r.day > m.lastDay) return;
+      if (tx.some((t) => t.recurId === r.id)) return;
+      tx = [...tx, {
+        id: `tx-${m.key}-${r.id}-auto`, day: r.day, cat: r.cat, subcat: r.subcat ?? null,
+        amount: r.amount, merchant: r.merchant, need: r.need, attachments: [], recurId: r.id, _new: true,
+      }];
+    });
+    if (tx === m.transactions) return m;
+    changed = true;
+    return recompute({ ...m, transactions: tx }, categories);
+  });
+  return changed ? next : months;
+}
 
 // Contiguous empty months from `from` to `to` (inclusive). recompute()
 // zero-fills byCat / byDay / total for the empty transaction lists.

@@ -10,7 +10,7 @@ import type {
   Settings,
   Transaction,
 } from "./types";
-import { buildSeed, recompute, monthScaffold } from "./data/seed";
+import { buildSeed, recompute, monthScaffold, postDueRecurring } from "./data/seed";
 import { load, save, DEFAULT_SETTINGS, STORAGE_KEY } from "./data/storage";
 import { catColor, fmtUSD, setLedgerCurrency, pad2, toDateInput, ordinal } from "./data/format";
 import { CURRENCIES, WEEKDAYS } from "./data/constants";
@@ -68,6 +68,13 @@ export default function App() {
 
   const [months, setMonths] = useState<MonthData[]>(initialMonths);
   const [idx, setIdx] = useState<number>(initialMonths.length - 1);
+
+  // materialize recurring charges that came due since the last visit
+  // (mount-only: initial recurring/categories are what the blob loaded)
+  useEffect(() => {
+    setMonths((prev) => postDueRecurring(prev, recurring, categories));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [hoverCat, setHoverCat] = useState<CategoryId | null>(null);
   const [filterCat, setFilterCat] = useState<CategoryId | null>(null);
   const [adding, setAdding] = useState<boolean>(false);

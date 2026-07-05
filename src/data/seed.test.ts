@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { buildSeed, recompute, monthScaffold } from "./seed";
+import { buildSeed, recompute, monthScaffold, postDueRecurring } from "./seed";
+import type { RecurringItem } from "../types";
 import type { Category, MonthData, Transaction } from "../types";
 
 const TODAY = new Date(2026, 5, 23); // fixed reference so assertions stay deterministic
@@ -36,6 +37,53 @@ describe("buildSeed", () => {
     const ids = buildSeed(TODAY).categories.map((c) => c.id);
     expect(ids.length).toBeGreaterThan(0);
     expect(ids).toContain("groceries");
+  });
+});
+
+describe("postDueRecurring", () => {
+  const cats = buildSeed(TODAY).categories;
+  const rent: RecurringItem = { id: "r1", merchant: "Rent", cat: "housing", subcat: null, amount: 1650, day: 1, need: true, active: true, endKey: null };
+  // months Apr..Jun 2026 with the Apr charge already posted (the anchor)
+  const base = () => {
+    const months = monthScaffold({ year: 2026, month: 3 }, { year: 2026, month: 5 }, TODAY, cats);
+    months[0] = recompute({
+      ...months[0],
+      transactions: [{ id: "t0", day: 1, cat: "housing", subcat: null, amount: 1650, merchant: "Rent", need: true, recurId: "r1" }],
+    }, cats);
+    return months;
+  };
+
+  it("posts the charge into every month after the anchor, up to the current one", () => {
+    const out = postDueRecurring(base(), [rent], cats);
+    expect(out[1].transactions).toHaveLength(1); // May
+    expect(out[2].transactions).toHaveLength(1); // June (current)
+    expect(out[1].transactions[0]).toMatchObject({ recurId: "r1", amount: 1650, day: 1 });
+    expect(out[1].total).toBe(1650); // aggregates recomputed
+  });
+
+  it("is idempotent and respects endKey / stopped items", () => {
+    const once = postDueRecurring(base(), [rent], cats);
+    const twice = postDueRecurring(once, [rent], cats);
+    expect(twice[1].transactions).toHaveLength(1); // no duplicates
+    const ended = postDueRecurring(base(), [{ ...rent, endKey: "2026-04" }], cats);
+    expect(ended[1].transactions).toHaveLength(0);
+    const stopped = postDueRecurring(base(), [{ ...rent, active: false }], cats);
+    expect(stopped[1].transactions).toHaveLength(0);
+  });
+
+  it("items that never posted only post into the current month", () => {
+    const months = monthScaffold({ year: 2026, month: 3 }, { year: 2026, month: 5 }, TODAY, cats);
+    const out = postDueRecurring(months, [rent], cats);
+    expect(out[0].transactions).toHaveLength(0); // April untouched
+    expect(out[1].transactions).toHaveLength(0); // May untouched
+    expect(out[2].transactions).toHaveLength(1); // June (current) gets it
+  });
+
+  it("waits for the charge day in the current month", () => {
+    const months = monthScaffold({ year: 2026, month: 3 }, { year: 2026, month: 5 }, TODAY, cats);
+    const late = { ...rent, day: TODAY.getDate() + 1 }; // due tomorrow
+    const out = postDueRecurring(months, [late], cats);
+    expect(out[2].transactions).toHaveLength(0);
   });
 });
 
