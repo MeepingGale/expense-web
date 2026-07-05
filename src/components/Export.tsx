@@ -42,15 +42,16 @@ interface ExportMenuProps {
   months: MonthData[];
   catById: Record<CategoryId, Category>;
   onPrint: () => void;
+  onBulk?: () => void; // phone-only popover entry (desktop has its own button)
 }
 
-export function ExportMenu({ months, catById, onPrint }: ExportMenuProps) {
+export function ExportMenu({ months, catById, onPrint, onBulk }: ExportMenuProps) {
   const [open, setOpen] = useState<boolean>(false);
   return (
     <div className="theme-menu">
       <button className="btn ghost export-btn" onClick={() => setOpen((o) => !o)}>
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3M3 13h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        Export
+        <span className="export-label">Export</span>
       </button>
       {open && (
         <>
@@ -64,6 +65,12 @@ export function ExportMenu({ months, catById, onPrint }: ExportMenuProps) {
               <span className="export-ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6V2.5h8V6M4 12H3a1 1 0 01-1-1V8a1 1 0 011-1h10a1 1 0 011 1v3a1 1 0 01-1 1h-1M4 10h8v3.5H4z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
               <span className="theme-opt-name">Save as PDF<em className="export-hint">Print this month</em></span>
             </button>
+            {onBulk && (
+              <button className="theme-opt export-bulk" onClick={() => { setOpen(false); onBulk(); }}>
+                <span className="export-ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2.5 4h11M2.5 8h11M2.5 12h7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg></span>
+                <span className="theme-opt-name">Bulk add<em className="export-hint">Several expenses at once</em></span>
+              </button>
+            )}
           </div>
         </>
       )}

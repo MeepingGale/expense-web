@@ -533,7 +533,7 @@ export default function App() {
         )}
 
         <div className="topbar-actions">
-          <ExportMenu months={months} catById={catById} onPrint={() => window.print()} />
+          <ExportMenu months={months} catById={catById} onPrint={() => window.print()} onBulk={() => setBulk(true)} />
           <ThemeMenu theme={t.theme} onChange={(v) => setTweak("theme", v)} />
           {view === "overview" && (
             <>
@@ -775,6 +775,11 @@ export default function App() {
         onDelete={(tx) => { deleteTransaction(tx.id, tx.monthKey); setViewerTx(null); }} />
 
       <PrintReport month={month} categories={categories} catById={catById} budget={budget} />
+
+      {/* phone-only floating add button (hidden on desktop via CSS) */}
+      <button className="fab" onClick={() => setAdding(true)} aria-label="Add expense">
+        <svg width="22" height="22" viewBox="0 0 14 14"><path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+      </button>
     </div>
   );
 }

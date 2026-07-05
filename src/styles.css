@@ -322,6 +322,8 @@ body{
 .nav-tabs button:hover{color:var(--text)}
 .nav-tabs button.on{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .nav-ic{display:none} /* icons only appear in the phone bottom bar */
+.fab{display:none}          /* phone-only floating add button */
+.export-bulk{display:none}  /* Bulk-add popover row is phone-only */
 
 /* ---------- transactions view ---------- */
 .txv{max-width:920px;margin:0 auto;padding:clamp(16px,4vw,40px);display:flex;flex-direction:column;gap:16px}
@@ -764,9 +766,12 @@ body{
   .span-tx{grid-column:span 6}
 }
 @media (max-width:760px){
-  .topbar{flex-wrap:wrap;gap:14px}
-  .tb-left{width:100%;flex-wrap:wrap;gap:10px}
+  /* compact one-row header: logo · ‹ month › · year · export/theme icons;
+     safe-area padding clears the notch under viewport-fit=cover */
+  .topbar{flex-wrap:nowrap;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 12px 8px}
+  .tb-left{width:auto;flex:0 0 auto}
   .brand{min-width:0}
+  .brand-name{display:none}
   /* the topbar's backdrop-filter makes it the containing block for fixed
      descendants, which would pin the bottom bar inside the topbar instead of
      the viewport — use a solid background on phones instead of the blur */
@@ -782,21 +787,50 @@ body{
   .nav-tabs button.on{background:transparent;box-shadow:none;color:var(--accent)}
   .nav-ic{display:block}
   .app{padding-bottom:calc(74px + env(safe-area-inset-bottom))}
-  .month-nav{order:3;width:100%;margin:0;justify-content:space-between}
-  .add-btn{margin-left:auto}
-  .kpi,.span-heat,.span-tx{grid-column:span 12}
-  .kpi-value{font-size:26px}
+  .month-nav{order:0;flex:1;justify-content:center;gap:2px;min-width:0}
+  .month-title{font-size:14px;white-space:nowrap}
+  .month-tag{display:none}
+  .month-nav .icon-btn{width:30px;height:30px;flex-shrink:0}
+  .year-pick{margin-left:2px}
+  .year-pick select{padding:7px 24px 7px 9px;font-size:12px}
+  /* add/bulk leave the headers: the FAB adds, the Export popover bulk-adds */
+  .topbar .add-btn,.topbar .bulk-btn,.txv-head .topbar-actions{display:none}
+  .topbar-actions{margin-left:0;flex:0 0 auto;flex-wrap:nowrap;gap:6px}
+  .export-btn{padding:9px}
+  .export-label{display:none}
+  .export-bulk{display:flex}
+  /* KPI stat tiles: 2×2 compact grid */
+  .span-heat,.span-tx{grid-column:span 12}
+  .kpi{grid-column:span 6;gap:5px}
+  .kpi-value{font-size:21px}
+  .kpi-label{font-size:10.5px;letter-spacing:.04em}
+  .kpi-sub{font-size:11px}
   .txv-head{flex-direction:column;align-items:flex-start;gap:12px}
-  .txv-head .add-btn{align-self:stretch}
   .txv-row{gap:10px}
-  .txv-group-head{top:124px}
+  .txv-group-head{top:calc(48px + env(safe-area-inset-top))}
+  /* filters: search on its own row, the two selects share the next */
+  .txv-filter-top .txv-select-wrap{flex:1 1 40%}
+  .txv-filter-top select{width:100%}
   .nw-grid{grid-template-columns:1fr}
   .fc-grid{grid-template-columns:1fr}
-  .topbar-actions{margin-left:auto;max-width:100%;flex-wrap:wrap;justify-content:flex-end;row-gap:8px}
-  .bulk-btn{padding:9px 11px}
   .recv-head{flex-direction:column;align-items:flex-start;gap:12px}
   .recv-total{align-items:flex-start;width:100%}
   .rec-row{flex-wrap:wrap}
   .rec-main{flex-basis:60%}
   .rec-amount{min-width:0;margin-left:auto}
+  /* tighter global rhythm on phones */
+  :root{--pad:16px;--gap:12px;--r:14px}
+  /* floating add button above the bottom bar */
+  .fab{display:grid;place-items:center;position:fixed;right:16px;bottom:calc(76px + env(safe-area-inset-bottom));
+    z-index:45;width:56px;height:56px;border-radius:50%;border:0;background:var(--accent);color:#fff;
+    box-shadow:0 10px 26px rgba(0,0,0,.4);cursor:pointer;transition:transform .12s}
+  .fab:active{transform:scale(.94)}
+  /* modals become bottom sheets */
+  .modal-scrim{place-items:end stretch;padding:0}
+  .modal{width:100%;max-width:100%;border-radius:18px 18px 0 0;max-height:92dvh;overflow-y:auto;
+    padding-bottom:calc(20px + env(safe-area-inset-bottom));animation:sheetUp .3s cubic-bezier(.32,.72,.33,1)}
+  @keyframes sheetUp{from{transform:translateY(48px)}to{transform:none}}
+  /* touch targets ≥40px */
+  .seg-mini button{padding:12px 13px}
+  .trend-xtick{padding:9px 0}
 }
