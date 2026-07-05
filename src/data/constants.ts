@@ -1,6 +1,7 @@
 import type { ThemeOption, AccentOption, Currency } from "../types";
 
 export const THEMES: ThemeOption[] = [
+  { id: "auto",   name: "Auto (system)", bg: "linear-gradient(135deg,#1c2230 50%,#f1f1ee 50%)", card: "linear-gradient(135deg,#2a3142 50%,#ffffff 50%)", text: "#8a93a6" },
   { id: "dark",   name: "Midnight", bg: "#1c2230", card: "#2a3142", text: "#f5f7fa" },
   { id: "carbon", name: "Carbon",   bg: "#181818", card: "#2b2b2b", text: "#f7f7f7" },
   { id: "light",  name: "Daylight", bg: "#f1f1ee", card: "#ffffff", text: "#2b2f38" },

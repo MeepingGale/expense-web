@@ -19,6 +19,9 @@
           var raw = localStorage.getItem("ledger-state-v1");
           if (!raw) return;
           var theme = JSON.parse(raw).settings.theme;
+          if (theme === "auto") {
+            theme = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+          }
           if (["dark", "light", "carbon", "sand"].indexOf(theme) !== -1) {
             document.documentElement.setAttribute("data-theme", theme);
           }

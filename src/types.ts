@@ -91,7 +91,7 @@ export interface RecurringItem {
 }
 
 export interface Settings {
-  theme: "dark" | "carbon" | "light" | "sand";
+  theme: "dark" | "carbon" | "light" | "sand" | "auto"; // auto follows the OS scheme
   accent: string; // hex; see ACCENTS palette
   trendMode: "bars" | "line" | "area";
   density: "comfortable" | "compact";

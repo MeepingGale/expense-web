@@ -46,6 +46,18 @@ export default function App() {
   const setTweak = useCallback<SetSetting>((key, value) =>
     setT((prev) => ({ ...prev, [key]: value })), []);
 
+  // "auto" theme follows the OS scheme; resolve to a concrete theme for the DOM
+  const [sysDark, setSysDark] = useState<boolean>(() =>
+    typeof window.matchMedia === "function" ? window.matchMedia("(prefers-color-scheme: dark)").matches : true);
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = (e: MediaQueryListEvent) => setSysDark(e.matches);
+    mq.addEventListener?.("change", onChange);
+    return () => mq.removeEventListener?.("change", onChange);
+  }, []);
+  const resolvedTheme = t.theme === "auto" ? (sysDark ? "dark" : "light") : t.theme;
+
   // Initial months: the seed's trailing-12 scaffold, widened backward to the
   // earliest stored month that has transactions — old data must never silently
   // age out of the window — then merged with the stored transactions.
@@ -445,9 +457,9 @@ export default function App() {
 
   // apply theme at document root so text color cascades from the top (robust across switches)
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", t.theme);
-    document.body.setAttribute("data-theme", t.theme);
-  }, [t.theme]);
+    document.documentElement.setAttribute("data-theme", resolvedTheme);
+    document.body.setAttribute("data-theme", resolvedTheme);
+  }, [resolvedTheme]);
 
   // persist state (v4; storage.ts migrates legacy blobs). Debounced: the blob
   // includes attachment data URLs, so serializing on every keystroke would
@@ -515,7 +527,7 @@ export default function App() {
   const rootStyle = { "--accent": t.accent } as React.CSSProperties;
 
   return (
-    <div className="app" data-theme={t.theme} data-density={t.density} style={rootStyle}>
+    <div className="app" data-theme={resolvedTheme} data-density={t.density} style={rootStyle}>
       {saveFailed && (
         <div className="save-warn" role="alert">
           ⚠ Your latest changes could not be saved — browser storage is full. Remove some large
