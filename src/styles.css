@@ -405,6 +405,7 @@ body{
   border-radius:12px;padding:11px 16px;font-size:13.5px;box-shadow:var(--shadow);animation:fade .2s ease;max-width:92vw}
 .undo-btn{appearance:none;border:0;background:transparent;color:var(--accent);font:inherit;font-weight:700;cursor:pointer;padding:2px 4px}
 .undo-btn:hover{text-decoration:underline}
+label.csv-import{cursor:pointer}
 .setv-backup{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
 .catbud-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px 22px;margin-top:6px}
 .catbud-row{display:flex;align-items:center;gap:10px}

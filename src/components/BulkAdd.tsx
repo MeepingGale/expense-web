@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { fmtUSD, toDateInput, currencySymbol, groupDigits } from "../data/format";
 import { useModalKeys, AmountInput } from "./common";
+import { csvToImportRows } from "../data/importCsv";
 import type { Category, CategoryId } from "../types";
 
 // Internal editable-row shape (amount is the raw string from the input).
@@ -110,6 +111,29 @@ export function BulkAdd({ open, onClose, onInsert, categories, catById, minDate,
     if (out.length) { setRows((prev) => [...prev.filter((r) => r.amount || r.merchant), ...out]); setPaste(""); setShowPaste(false); }
   };
 
+  // CSV import: understands our own export (header-mapped, incl. sub-category)
+  // and positional bank rows — feeds the same editable grid as paste
+  const onCsvFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    f.text().then((text) => {
+      const out: BulkEditRow[] = [];
+      csvToImportRows(text).forEach((r) => {
+        const date = _normalizeDate(r.date);
+        const amount = parseFloat(String(r.amount).replace(/[^0-9.]/g, ""));
+        if (!date || !(amount > 0)) return;
+        const cat = matchCat(r.catName);
+        const sub = r.subName
+          ? (catById[cat]?.subs ?? []).find((s) => s.name.toLowerCase() === r.subName.toLowerCase())?.id ?? ""
+          : "";
+        out.push({ date, merchant: r.merchant || catById[cat].name, cat, subcat: sub,
+          amount: String(amount), need: r.need ?? true });
+      });
+      if (out.length) setRows((prev) => [...prev.filter((x) => x.amount || x.merchant), ...out]);
+    });
+  };
+
   // merchant memory: typing/picking a known merchant prefills the row's
   // category, sub-category, and type from its last use
   const setRowMerchant = (i: number, v: string) => setRows((prev) => prev.map((r, j) => {
@@ -149,6 +173,10 @@ export function BulkAdd({ open, onClose, onInsert, categories, catById, minDate,
           <button type="button" className="link-btn" onClick={() => setShowPaste((s) => !s)}>
             {showPaste ? "Hide paste" : "Paste from spreadsheet"}
           </button>
+          <label className="link-btn csv-import">
+            Import CSV
+            <input type="file" hidden accept=".csv,text/csv" onChange={onCsvFile} />
+          </label>
           <span className="bulk-count">{valid.length} of {rows.length} ready · {fmtUSD(validTotal)}</span>
         </div>
 
