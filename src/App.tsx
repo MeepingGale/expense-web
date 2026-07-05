@@ -15,7 +15,7 @@ import { load, save, DEFAULT_SETTINGS, STORAGE_KEY } from "./data/storage";
 import { catColor, fmtUSD, setLedgerCurrency, pad2, toDateInput, ordinal } from "./data/format";
 import { CURRENCIES, WEEKDAYS } from "./data/constants";
 import { Delta, Paperclip, KpiCard, ThemeMenu, TxDetail, AddExpense } from "./components/common";
-import { TrendChart, CategoryDonut, Heatmap } from "./components/Charts";
+import { TrendChart, CategoryDonut, CategoryTrends, Heatmap } from "./components/Charts";
 import { Transactions } from "./components/Transactions";
 import { CategoriesView } from "./components/CategoriesView";
 import { RecurringView, AddRecurring } from "./components/RecurringView";
@@ -741,6 +741,19 @@ export default function App() {
             ))}
           </div>
         </section>
+
+        {/* Category trends (needs 2+ months with spend to be meaningful) */}
+        {yearMonths.length >= 2 && categories.some((c) => yearMonths.some((m) => (m.byCat[c.id] || 0) > 0)) && (
+          <section className="card span-trend2">
+            <div className="card-head">
+              <div>
+                <h2>Category trends</h2>
+                <p className="card-sub">{month.year} · top categories by spend</p>
+              </div>
+            </div>
+            <CategoryTrends months={yearMonths} categories={categories} />
+          </section>
+        )}
 
         {/* Heatmap */}
         <section className="card span-heat">

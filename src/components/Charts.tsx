@@ -1,7 +1,7 @@
 /* Chart + viz components. SVG-based, theme-driven via CSS vars. */
 import React, { useState } from "react";
 import { catColor, fmtUSD, fmtCompact } from "../data/format";
-import type { MonthData, CategoryId, Settings } from "../types";
+import type { MonthData, Category, CategoryId, Settings } from "../types";
 
 interface TrendChartProps {
   months: MonthData[]; selectedIndex: number; onSelect: (i: number) => void;
@@ -101,6 +101,56 @@ export function TrendChart({ months, selectedIndex, onSelect, accent, mode, budg
             <span className="trend-xname">{m.shortLabel}</span>
             {m.month === 0 && <span className="trend-xyear">{m.year}</span>}
           </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ───────────────────────── Category trends ─────────────────────────
+// Top categories as lines across the year's months. Deliberately minimal:
+// top-4 legend with year totals, no tooltips.
+interface CategoryTrendsProps { months: MonthData[]; categories: Category[]; }
+
+export function CategoryTrends({ months, categories }: CategoryTrendsProps) {
+  const ranked = categories
+    .map((c) => ({ c, total: months.reduce((s, m) => s + (m.byCat[c.id] || 0), 0) }))
+    .filter((x) => x.total > 0)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 4);
+  if (months.length < 2 || !ranked.length) return null;
+  const DW = 1000, DH = 320, padT = 14, padB = 6;
+  const innerH = DH - padT - padB;
+  const max = Math.max(...ranked.map(({ c }) => Math.max(...months.map((m) => m.byCat[c.id] || 0)))) || 1;
+  const band = DW / months.length;
+  const xc = (i: number) => band * i + band / 2;
+  const y = (v: number) => padT + innerH * (1 - v / max);
+  return (
+    <div className="chart-wrap chart-fill trend-wrap">
+      <div className="trend-plot">
+        <svg className="trend-svg" viewBox={`0 0 ${DW} ${DH}`} preserveAspectRatio="none">
+          {[0.25, 0.5, 0.75, 1].map((f) => (
+            <line key={f} x1="0" x2={DW} y1={padT + innerH * (1 - f)} y2={padT + innerH * (1 - f)}
+              stroke="var(--grid)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+          ))}
+          {ranked.map(({ c }) => (
+            <path key={c.id}
+              d={months.map((m, i) => `${i ? "L" : "M"}${xc(i).toFixed(1)} ${y(m.byCat[c.id] || 0).toFixed(1)}`).join(" ")}
+              fill="none" stroke={catColor(c.hue)} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round"
+              vectorEffect="non-scaling-stroke" />
+          ))}
+        </svg>
+      </div>
+      <div className="trend-xaxis">
+        {months.map((m) => (
+          <span key={m.key} className="trend-xtick is-static"><span className="trend-xname">{m.shortLabel}</span></span>
+        ))}
+      </div>
+      <div className="cattrend-legend">
+        {ranked.map(({ c, total }) => (
+          <span key={c.id} className="nw-cat-chip">
+            <i style={{ background: catColor(c.hue) }} />{c.name}<em>{fmtUSD(total)}</em>
+          </span>
         ))}
       </div>
     </div>

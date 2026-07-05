@@ -406,6 +406,10 @@ body{
 .undo-btn{appearance:none;border:0;background:transparent;color:var(--accent);font:inherit;font-weight:700;cursor:pointer;padding:2px 4px}
 .undo-btn:hover{text-decoration:underline}
 label.csv-import{cursor:pointer}
+.span-trend2{grid-column:span 12}
+.span-trend2 .trend-plot{min-height:180px}
+.trend-xtick.is-static{cursor:default}
+.cattrend-legend{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
 .setv-backup{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
 .catbud-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px 22px;margin-top:6px}
 .catbud-row{display:flex;align-items:center;gap:10px}
