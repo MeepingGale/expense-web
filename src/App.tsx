@@ -328,10 +328,32 @@ export default function App() {
   };
   const bulkInsert = (items: InsertItem[]) => routeInsert(items);
 
-  // edit / delete a transaction
-  const deleteTransaction = (id: string, key: string | undefined) => {
+  // edit / delete a transaction (delete keeps an undo window)
+  const [undoTx, setUndoTx] = useState<{ tx: Transaction; monthKey: string } | null>(null);
+  useEffect(() => {
+    if (!undoTx) return;
+    const timer = setTimeout(() => setUndoTx(null), 6000);
+    return () => clearTimeout(timer);
+  }, [undoTx]);
+
+  const deleteTransaction = (tx: Transaction) => {
+    const key = tx.monthKey;
+    if (!key) return;
     setMonths((prevM) => prevM.map((m) => (m.key === key
-      ? recompute({ ...m, transactions: m.transactions.filter((tx) => tx.id !== id) }, categories) : m)));
+      ? recompute({ ...m, transactions: m.transactions.filter((x) => x.id !== tx.id) }, categories) : m)));
+    // keep a clean copy (no transient display fields) for undo
+    setUndoTx({
+      monthKey: key,
+      tx: { id: tx.id, day: tx.day, cat: tx.cat, subcat: tx.subcat ?? null, amount: tx.amount,
+        merchant: tx.merchant, need: tx.need, attachments: tx.attachments ?? [], recurId: tx.recurId ?? null },
+    });
+  };
+
+  const undoDelete = () => {
+    if (!undoTx) return;
+    setMonths((prevM) => prevM.map((m) => (m.key === undoTx.monthKey
+      ? recompute({ ...m, transactions: [...m.transactions, { ...undoTx.tx, _new: true }] }, categories) : m)));
+    setUndoTx(null);
   };
   const saveTransaction = (id: string, oldKey: string | null, item: AddExpensePayload) => {
     const newKey = `${item.year}-${pad2(item.month + 1)}`;
@@ -779,7 +801,7 @@ export default function App() {
       <TxDetail tx={viewerTx} catById={catById} onClose={() => setViewerTx(null)}
         onEdit={(tx) => { setEditingTx(tx); setViewerTx(null); }}
         onDuplicate={duplicateTransaction}
-        onDelete={(tx) => { deleteTransaction(tx.id, tx.monthKey); setViewerTx(null); }} />
+        onDelete={(tx) => { deleteTransaction(tx); setViewerTx(null); }} />
 
       <PrintReport month={month} categories={categories} catById={catById} budget={budget} />
 
@@ -787,6 +809,13 @@ export default function App() {
       <button className="fab" onClick={() => setAdding(true)} aria-label="Add expense">
         <svg width="22" height="22" viewBox="0 0 14 14"><path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
       </button>
+
+      {undoTx && (
+        <div className="undo-toast" role="status">
+          <span>Deleted “{undoTx.tx.merchant}” — {fmtUSD(undoTx.tx.amount, true)}</span>
+          <button className="undo-btn" onClick={undoDelete}>Undo</button>
+        </div>
+      )}
     </div>
   );
 }

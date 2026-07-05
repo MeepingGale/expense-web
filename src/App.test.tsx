@@ -200,6 +200,29 @@ describe("App — smoke + parity", () => {
     expect((form.querySelector(".txv-select-wrap select") as HTMLSelectElement).value).toBe("petrol");
   });
 
+  it("deleting a transaction offers Undo, which restores it", () => {
+    const now = new Date();
+    const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    localStorage.setItem("ledger-state-v1", JSON.stringify({
+      v: 4,
+      txByMonth: { [key]: [{ id: "d1", day: 1, cat: "dining", subcat: null, amount: 42, merchant: "Doomed Cafe", need: false, recurId: null }] },
+      categories: [{ id: "dining", name: "Dining", hue: 22, subs: [] }],
+      recurring: [], budget: 3800, currency: "USD", settings: DEFAULT_SETTINGS,
+    }));
+    const { container } = render(<App />);
+
+    // open the detail modal and delete (two-step confirm)
+    const txList = () => container.querySelector(".tx-list") as HTMLElement;
+    fireEvent.click(within(txList()).getByText("Doomed Cafe").closest(".tx-row") as HTMLElement);
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(within(container.querySelector(".td-confirm") as HTMLElement).getByRole("button", { name: "Delete" }));
+    expect(within(txList()).queryByText("Doomed Cafe")).toBeNull();
+
+    // toast appears; Undo restores the transaction
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(within(txList()).getByText("Doomed Cafe")).toBeInTheDocument();
+  });
+
   it("keeps stored transactions older than the 12-month window (no aging-out)", () => {
     // A transaction 14 months back — outside the seed's trailing-12 scaffold.
     const now = new Date();
