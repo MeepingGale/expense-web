@@ -2,7 +2,7 @@
 
 A local-first expense tracker PWA. All data lives in your browser — no backend, no account, no tracking. Built with React 18 + TypeScript (strict) and zero runtime dependencies beyond React itself.
 
-**[Live demo →](https://meepinggale.github.io/expense-web/)**
+**[Live demo →](https://meepinggale.github.io/expense-web/)** · [![deploy](https://github.com/MeepingGale/expense-web/actions/workflows/deploy.yml/badge.svg)](https://github.com/MeepingGale/expense-web/actions/workflows/deploy.yml)
 
 ![Overview — dark theme](docs/screenshots/overview-dark.png)
 
@@ -33,9 +33,14 @@ I built this to track my own monthly spending and use it daily. Money data is ex
 
 ## Screenshots
 
-| Light theme — transactions | Mobile PWA |
-| --- | --- |
-| ![Transactions — light theme](docs/screenshots/transactions-light.png) | ![Mobile — dark theme](docs/screenshots/mobile-dark.png) |
+<table>
+  <tr>
+    <td valign="top"><img src="docs/screenshots/transactions-light.png" alt="Transactions — light theme" width="620"></td>
+    <td valign="top"><img src="docs/screenshots/mobile-dark.png" alt="Mobile PWA — dark theme" width="180"></td>
+  </tr>
+</table>
+
+<sub>All screenshots show the bundled demo dataset — not real spending.</sub>
 
 ## Architecture
 
@@ -52,7 +57,7 @@ flowchart LR
 - **Service worker:** navigations go network-first (deploys show up immediately) with the cached shell as offline fallback; hashed assets are cache-first.
 - **Charts are hand-rolled SVG** — no chart library, which is most of why the whole app ships in one small bundle.
 
-The project started life as a single-file Claude-artifact export (HTML + in-browser-Babel JSX, preserved at commit `248efec`) and was rebuilt into strict TypeScript with tests — the diff between the two is a decent tour of what "productionizing a prototype" means.
+The project started life as a single-file Claude-artifact export (HTML + in-browser-Babel JSX, preserved at commit `edcef9a`) and was rebuilt into strict TypeScript with tests — the diff between the two is a decent tour of what "productionizing a prototype" means.
 
 ## Performance & quality — measured, not vibes
 
@@ -89,19 +94,20 @@ Choices I'd defend, and where their ceilings are:
 ## Run locally
 
 ```bash
-npm install
-npm run dev        # http://localhost:5173
+yarn               # install
+yarn dev           # http://localhost:5173
 ```
 
-Other commands: `npm test` (Vitest), `npm run typecheck`, `npm run build`.
+Other commands: `yarn test` (Vitest), `yarn typecheck`, `yarn build`.
 
-## Tests
+## Tests & CI
 
 Vitest + Testing Library. Coverage concentrates where breakage is expensive: storage migrations and guards, CSV build/escaping, CSV import parsing, recurring auto-posting, currency formatting, and an app smoke test.
 
+Every push to `main` runs the same pipeline in GitHub Actions — install, tests, typecheck + build — and deploys the built site to GitHub Pages ([`deploy.yml`](.github/workflows/deploy.yml)).
+
 ## Roadmap
 
-- GitHub Pages deploy with a demo-data toggle (so the live demo isn't an empty ledger)
-- CI: typecheck + tests on every push, badge in this README
+- Demo-data toggle for the live demo (it currently starts as an empty ledger)
 - Remaining Lighthouse points: one low-contrast element, meta description
 - End-to-end-encrypted sync for multi-device use
