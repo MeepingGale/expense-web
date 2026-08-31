@@ -110,3 +110,7 @@ Every push to `main` runs the same pipeline in GitHub Actions — install, tests
 - Demo-data toggle for the live demo (it currently starts as an empty ledger)
 - Remaining Lighthouse points: one low-contrast element, meta description
 - End-to-end-encrypted sync for multi-device use
+
+## License
+
+**All rights reserved.** The source is public to read, not to use — no permission is granted to copy, modify, or redistribute it in any form. See [LICENSE](LICENSE).
