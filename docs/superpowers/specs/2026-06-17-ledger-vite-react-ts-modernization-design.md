@@ -6,7 +6,7 @@
 
 ## 1. Context
 
-"Ledger" is a personal expense tracker that was generated as a Claude **artifact** and exported to disk. It currently runs as a set of loose files with **no build step**:
+"Ledger" is a personal expense tracker that began as a single-file **prototype** exported to disk. It currently runs as a set of loose files with **no build step**:
 
 - `Ledger - Expense Tracker.html` loads React 18 (UMD) and `@babel/standalone` from the unpkg CDN, then pulls in each `.jsx` file as `<script type="text/babel" src="...">`. **JSX is transpiled in the browser on every page load.**
 - Files share code through **globals**, not ES modules: `data.js` assigns `window.EXPENSE`, and each component file attaches to `window`. The `<script>` load order in the HTML is therefore load-bearing.
@@ -79,7 +79,7 @@ ledger/
 
 **Finding.** `tweaks-panel.jsx` exports two very different things:
 
-1. `TweaksPanel` + `Tweak*` controls — the artifact's in-iframe editor UI. It `return null`s outside the Claude artifact host, so it is **invisible/disposable** in a standalone app.
+1. `TweaksPanel` + `Tweak*` controls — the prototype's in-iframe editor UI. It `return null`s outside its original host, so it is **invisible/disposable** in a standalone app.
 2. `useTweaks(defaults)` — the hook holding `{theme, accent, trendMode, density, budgetLine}`, read by the **real** UI throughout (header accent, `data-theme`, trend-chart mode, budget line, density). This hook is **load-bearing**.
 
 Two consequences of leaving the artifact host:

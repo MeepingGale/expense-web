@@ -56,7 +56,7 @@ I built this to track my own monthly spending and use it daily. Money data is ex
 - **Service worker:** navigations go network-first (deploys show up immediately) with the cached shell as offline fallback; hashed assets are cache-first.
 - **Charts are hand-rolled SVG** — no chart library, which is most of why the whole app ships in one small bundle.
 
-The project started life as a single-file Claude-artifact export (HTML + in-browser-Babel JSX, preserved at commit `edcef9a`) and was rebuilt into strict TypeScript with tests — the diff between the two is a decent tour of what "productionizing a prototype" means.
+The project started life as a single-file prototype (HTML + in-browser-Babel JSX, preserved at commit `d45a9f1`) and was rebuilt into strict TypeScript with tests — the diff between the two is a decent tour of what "productionizing a prototype" means.
 
 ## Performance & quality — measured, not vibes
 
