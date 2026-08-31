@@ -123,7 +123,7 @@ body{
   font-family:"Manrope";font-weight:600;font-size:13.5px;padding:9px 15px;
   display:inline-flex;align-items:center;gap:7px;transition:.15s;
 }
-.btn.primary{background:var(--accent);color:#fff;box-shadow:var(--shadow)}
+.btn.primary{background:var(--accent);color:#0d1420;box-shadow:var(--shadow)} /* dark-on-accent: ≥4.5:1 on every ACCENTS value; #fff fails on all */
 .btn.primary:hover{filter:brightness(1.07)}
 .btn.primary:disabled{opacity:.45;cursor:not-allowed;filter:none}
 .btn.ghost{background:transparent;border-color:var(--border-strong);color:var(--text-dim)}
@@ -452,7 +452,7 @@ label.csv-import{cursor:pointer}
 .att-pdf embed{width:100%;height:360px;border:1px solid var(--border-strong);border-radius:11px;background:#fff}
 .att-name{font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .modal-tall{max-height:92vh;overflow-y:auto}
-.btn.danger{background:var(--danger);color:#fff}
+.btn.danger{background:var(--danger);color:#0d1420} /* dark-on-fill, same as .btn.primary — white is 3.4:1 here */
 .btn.danger:hover{filter:brightness(1.07)}
 
 /* ---------- clickable rows + detail modal ---------- */
@@ -662,7 +662,7 @@ label.csv-import{cursor:pointer}
 .rec-edit-input input{width:78px;font-family:"Space Grotesk";font-size:16px;font-weight:600;padding:7px 0 7px 4px}
 .rec-edit-input .dollar{font-size:15px}
 .rec-icon{appearance:none;border:0;border-radius:8px;width:34px;height:34px;display:grid;place-items:center;cursor:pointer;flex-shrink:0}
-.rec-icon.save{background:var(--accent);color:#fff}
+.rec-icon.save{background:var(--accent);color:#0d1420}
 .rec-icon.save:hover{filter:brightness(1.08)}
 .rec-toggle{appearance:none;border:1px solid var(--border-strong);background:transparent;color:var(--text-dim);
   font-family:"Manrope";font-weight:600;font-size:12.5px;padding:7px 15px;border-radius:9px;cursor:pointer;transition:.15s;min-width:74px}
@@ -834,7 +834,7 @@ label.csv-import{cursor:pointer}
   :root{--pad:16px;--gap:12px;--r:14px}
   /* floating add button above the bottom bar */
   .fab{display:grid;place-items:center;position:fixed;right:16px;bottom:calc(76px + env(safe-area-inset-bottom));
-    z-index:45;width:56px;height:56px;border-radius:50%;border:0;background:var(--accent);color:#fff;
+    z-index:45;width:56px;height:56px;border-radius:50%;border:0;background:var(--accent);color:#0d1420;
     box-shadow:0 10px 26px rgba(0,0,0,.4);cursor:pointer;transition:transform .12s}
   .fab:active{transform:scale(.94)}
   /* modals become bottom sheets */
