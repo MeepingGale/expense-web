@@ -44,13 +44,12 @@ I built this to track my own monthly spending and use it daily. Money data is ex
 
 ## Architecture
 
-```mermaid
-flowchart LR
-  UI["React views<br/>(Overview · Transactions · Recurring · Categories · Settings)"] --> App["App state"]
-  App -- "save (v4 blob)" --> LS[("localStorage")]
-  LS -- "load → migrate v1→v4<br/>+ shape guards" --> App
-  SW["Service worker"] -. "offline shell +<br/>cached assets" .-> UI
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/architecture-dark.png">
+  <img alt="Ledger client-side architecture — GitHub Pages serves the bundle; React views, App state, the src/data core, localStorage, and the service worker all run inside the browser" src="docs/screenshots/architecture-light.png">
+</picture>
+
+<sub><a href="https://meepinggale.github.io/expense-web/architecture.html">Explore the interactive version →</a> — pan/zoom, search, relationship tracing. Regenerate from <a href="docs/architecture.archify.json">docs/architecture.archify.json</a>.</sub>
 
 - **Vite + React 18 + TypeScript strict.** State lives in `App` and persists as a single versioned JSON blob. No state library, no router — five views and one state owner didn't justify either.
 - **`src/data/` is the core:** `storage.ts` (versioned blob, v1→v4 migrations, pre-migration backups, shape guards), `seed.ts` (month scaffold + recurring auto-post), `importCsv.ts`, `format.ts` (currency/formatting), `constants.ts`.

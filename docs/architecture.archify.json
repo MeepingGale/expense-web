@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Ledger — client-side architecture",
+    "locale": "en",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    { "id": "pages", "type": "external", "label": "GitHub Pages", "sublabel": "static hosting", "pos": [40, 330], "size": [140, 64] },
+    { "id": "views", "type": "frontend", "label": "React views", "sublabel": "5 tabs · no router", "pos": [360, 330], "size": [150, 64] },
+    { "id": "app", "type": "frontend", "label": "App state", "sublabel": "single owner — App.tsx", "pos": [690, 330], "size": [170, 64] },
+    { "id": "data", "type": "backend", "label": "Data core", "sublabel": "src/data — storage · seed · csv", "pos": [1080, 330], "size": [190, 68] },
+    { "id": "ls", "type": "database", "label": "localStorage", "sublabel": "versioned JSON blob (v4)", "pos": [1090, 530], "size": [170, 64] },
+    { "id": "sw", "type": "backend", "label": "Service worker", "sublabel": "offline shell · cached assets", "pos": [345, 130], "size": [180, 64] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Browser — everything runs client-side", "wraps": ["views", "app", "data", "ls", "sw"] }
+  ],
+  "connections": [
+    { "id": "first-load", "from": "pages", "to": "views", "label": "app bundle — first load", "variant": "dashed" },
+    { "id": "offline-serve", "from": "sw", "to": "views", "label": "offline shell + cached assets", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "labelDy": 24 },
+    { "id": "user-actions", "from": "views", "to": "app", "label": "user actions" },
+    { "id": "save-blob", "from": "app", "to": "data", "label": "save v4 blob", "labelDy": 40 },
+    { "id": "load-migrate", "from": "data", "to": "app", "label": "load → migrate v1→v4 + shape guards", "labelDy": 57 },
+    { "id": "persist", "from": "data", "to": "ls", "label": "get / set (+ pre-migration backup)", "fromSide": "bottom", "toSide": "top", "labelDy": 60 }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Client-only", "items": ["No backend, no accounts — data never leaves the device", "Installable PWA, fully offline after first load"] },
+    { "dot": "emerald", "title": "Persistence", "items": ["Single versioned JSON blob in localStorage", "Migrations snapshot the pre-migration blob first", "Corrupt blobs degrade to empty collections, not crashes"] },
+    { "dot": "amber", "title": "Bundle", "items": ["Zero runtime deps beyond React", "Hand-rolled SVG charts — 73.7 kB JS gzip"] }
+  ]
+}
