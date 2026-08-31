@@ -1,21 +1,107 @@
 # Ledger — Expense Tracker
 
-A client-only personal expense tracker built with React + TypeScript. All data lives in the browser's `localStorage`; there is no backend.
+A local-first expense tracker PWA. All data lives in your browser — no backend, no account, no tracking. Built with React 18 + TypeScript (strict) and zero runtime dependencies beyond React itself.
 
-## Develop
+**[Live demo →](https://meepinggale.github.io/expense-web/)**
 
-```bash
-npm install
-npm run dev        # dev server at http://localhost:5173
-npm test           # run the Vitest suite
-npm run typecheck  # tsc --noEmit
-npm run build      # production static bundle in dist/
-```
+![Overview — dark theme](docs/screenshots/overview-dark.png)
+
+I built this to track my own monthly spending and use it daily. Money data is exactly the kind of data that shouldn't sit in someone else's database, so the entire app runs client-side: `localStorage` for state, a service worker for offline, and nothing ever leaves the device.
+
+## Features
+
+**Tracking**
+- Add, edit, and delete expenses — with receipt attachments, a 6-second undo window on delete, and a merchant memory that auto-fills category, sub-category, and need/want from past entries
+- Bulk add and CSV import for backfilling months at once
+- Recurring charges (rent, subscriptions) that auto-post when due, with pause and end dates
+- Keyboard-first: `N` opens Add expense, `←`/`→` switch months
+
+**Analysis**
+- Monthly overview: spend vs budget, needs vs wants split, auto-generated insights ("Dining is up 25% vs your 3-month average")
+- Category donut with per-category budgets and sub-category drill-down
+- Monthly trend (bars / line / area), category trends across the year, and a daily-spending calendar
+
+**Data & portability**
+- CSV export of all transactions and a printable monthly PDF report
+- Versioned storage (v1 → v4 migrations) that snapshots the pre-migration blob before upgrading, so a bad migration or a rollback can't silently destroy data
+- Corrupt or hand-edited blobs degrade to empty collections instead of crashing; quota-exceeded writes surface a warning instead of failing silently
+- Multi-currency, including MYR
+
+**Experience**
+- Installable PWA, fully offline after first load
+- Four themes plus OS-follow auto mode, accent colors, compact density — with a pre-paint script so the saved theme applies before React mounts (no flash on reload)
+
+## Screenshots
+
+| Light theme — transactions | Mobile PWA |
+| --- | --- |
+| ![Transactions — light theme](docs/screenshots/transactions-light.png) | ![Mobile — dark theme](docs/screenshots/mobile-dark.png) |
 
 ## Architecture
 
-- **Vite + React 18 + TypeScript** (strict mode). No server — state is held in `App` and persisted to `localStorage`.
-- `src/data/seed.ts` generates first-run sample data; `src/data/storage.ts` reads/writes a versioned blob (with a v1→v2 settings migration); `src/data/format.ts` holds shared formatting + currency helpers; `src/data/constants.ts` holds static lookup data.
-- `src/hooks/useSettings.ts` holds appearance/chart settings. UI components live in `src/components/`.
+```mermaid
+flowchart LR
+  UI["React views<br/>(Overview · Transactions · Recurring · Categories · Settings)"] --> App["App state"]
+  App -- "save (v4 blob)" --> LS[("localStorage")]
+  LS -- "load → migrate v1→v4<br/>+ shape guards" --> App
+  SW["Service worker"] -. "offline shell +<br/>cached assets" .-> UI
+```
 
-The original Claude-artifact export (single HTML file + in-browser-Babel JSX) is preserved in git history at commit `248efec`.
+- **Vite + React 18 + TypeScript strict.** State lives in `App` and persists as a single versioned JSON blob. No state library, no router — five views and one state owner didn't justify either.
+- **`src/data/` is the core:** `storage.ts` (versioned blob, v1→v4 migrations, pre-migration backups, shape guards), `seed.ts` (month scaffold + recurring auto-post), `importCsv.ts`, `format.ts` (currency/formatting), `constants.ts`.
+- **Service worker:** navigations go network-first (deploys show up immediately) with the cached shell as offline fallback; hashed assets are cache-first.
+- **Charts are hand-rolled SVG** — no chart library, which is most of why the whole app ships in one small bundle.
+
+The project started life as a single-file Claude-artifact export (HTML + in-browser-Babel JSX, preserved at commit `248efec`) and was rebuilt into strict TypeScript with tests — the diff between the two is a decent tour of what "productionizing a prototype" means.
+
+## Performance & quality — measured, not vibes
+
+Production build, Lighthouse 12 (desktop):
+
+| Metric | Value |
+| --- | --- |
+| JS bundle (gzip) | **73.7 kB** |
+| CSS (gzip) | 9.8 kB |
+| Lighthouse Best Practices | **100** |
+| Lighthouse Accessibility | 96 |
+| Tests | **47 passing** across 7 files (~1.4 s) |
+
+Zero runtime dependencies beyond `react` + `react-dom` — no chart lib, no date lib, no CSS framework — so the bundle stays small and the supply-chain surface stays near zero.
+
+## Security
+
+For a client-only app, most of the work is protecting the user's own data:
+
+- **Content-Security-Policy** as defense-in-depth: no remote script origins can load even if markup is injected; attachments render only from `data:`/`blob:`
+- **CSV-injection escaping (CWE-1236)** on export — cells a spreadsheet would evaluate as formulas are neutralized
+- **Data-loss guards**: pre-migration backups, corrupt-blob degradation, and `save()` reporting quota failures so the UI can warn instead of dropping writes
+- Receipt attachments are stored as data URLs inside the blob — they never touch a server
+
+## Tradeoffs
+
+Choices I'd defend, and where their ceilings are:
+
+- **No backend.** Privacy, zero ops, instant loads. The ceiling is multi-device sync — the plan for that is a small end-to-end-encrypted sync service, not a rewrite.
+- **`localStorage` over IndexedDB.** One JSON blob makes versioned migrations trivial, and years of transactions fit comfortably. Receipt attachments are the pressure point; IndexedDB is the upgrade path if they grow.
+- **No router.** Five tabs, one state owner. URLs nobody would bookmark aren't worth a dependency.
+- **Hand-rolled SVG charts.** Full control over theming and interactions at a fraction of a chart library's weight.
+
+## Run locally
+
+```bash
+npm install
+npm run dev        # http://localhost:5173
+```
+
+Other commands: `npm test` (Vitest), `npm run typecheck`, `npm run build`.
+
+## Tests
+
+Vitest + Testing Library. Coverage concentrates where breakage is expensive: storage migrations and guards, CSV build/escaping, CSV import parsing, recurring auto-posting, currency formatting, and an app smoke test.
+
+## Roadmap
+
+- GitHub Pages deploy with a demo-data toggle (so the live demo isn't an empty ledger)
+- CI: typecheck + tests on every push, badge in this README
+- Remaining Lighthouse points: one low-contrast element, meta description
+- End-to-end-encrypted sync for multi-device use
