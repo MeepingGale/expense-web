@@ -30,6 +30,7 @@ I built this to track my own monthly spending and use it daily. Money data is ex
 **Experience**
 - Installable PWA, fully offline after first load
 - Four themes plus OS-follow auto mode, accent colors, compact density — with a pre-paint script so the saved theme applies before React mounts (no flash on reload)
+- First-run demo mode: one click loads a year of realistic sample data (it's what the live demo shows), one click clears it
 
 ## Screenshots
 
@@ -60,15 +61,16 @@ The project started life as a single-file prototype (HTML + in-browser-Babel JSX
 
 ## Performance & quality — measured, not vibes
 
-Production build, Lighthouse 12 (desktop):
+Production build, Lighthouse (desktop and mobile, audited on the live demo with data loaded):
 
 | Metric | Value |
 | --- | --- |
-| JS bundle (gzip) | **73.7 kB** |
-| CSS (gzip) | 9.8 kB |
+| JS bundle (gzip) | **75.0 kB** |
+| CSS (gzip) | 9.9 kB |
+| Lighthouse Accessibility | **100** |
 | Lighthouse Best Practices | **100** |
-| Lighthouse Accessibility | 96 |
-| Tests | **47 passing** across 7 files (~1.4 s) |
+| Lighthouse SEO | **100** |
+| Tests | **52 passing** across 8 files (~1.6 s) |
 
 Zero runtime dependencies beyond `react` + `react-dom` — no chart lib, no date lib, no CSS framework — so the bundle stays small and the supply-chain surface stays near zero.
 
@@ -107,8 +109,6 @@ Every push to `main` runs the same pipeline in GitHub Actions — install, tests
 
 ## Roadmap
 
-- Demo-data toggle for the live demo (it currently starts as an empty ledger)
-- Remaining Lighthouse points: one low-contrast element, meta description
 - End-to-end-encrypted sync for multi-device use
 
 ## License
