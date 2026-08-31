@@ -30,7 +30,7 @@ body{
   --border-strong: oklch(1 0 0 / .14);
   --text: oklch(0.97 0.005 256);
   --text-dim: oklch(0.76 0.015 256);
-  --text-faint: oklch(0.63 0.018 256); /* ≥4.5:1 on --bg for 12px text (WCAG AA) */
+  --text-faint: oklch(0.66 0.018 256); /* ≥4.5:1 on --bg AND --card-2 for 12px text (WCAG AA) */
   --grid: oklch(1 0 0 / .06);
   --bar: oklch(0.62 0.02 256);
   --heat-empty: oklch(1 0 0 / .05);
@@ -48,7 +48,7 @@ body{
   --border-strong: oklch(0.2 0.02 256 / .16);
   --text: oklch(0.22 0.02 262);
   --text-dim: oklch(0.46 0.02 262);
-  --text-faint: oklch(0.62 0.02 262);
+  --text-faint: oklch(0.52 0.02 262); /* ≥4.5:1 on --bg/--card-2 (WCAG AA) */
   --grid: oklch(0.2 0.02 256 / .08);
   --bar: oklch(0.78 0.02 256);
   --heat-empty: oklch(0.2 0.02 256 / .05);
@@ -66,7 +66,7 @@ body{
   --border-strong: oklch(1 0 0 / .17);
   --text: oklch(0.975 0 0);
   --text-dim: oklch(0.76 0 0);
-  --text-faint: oklch(0.6 0 0);
+  --text-faint: oklch(0.68 0 0); /* ≥4.5:1 on --card-2 (WCAG AA) */
   --grid: oklch(1 0 0 / .07);
   --bar: oklch(0.62 0 0);
   --heat-empty: oklch(1 0 0 / .06);
@@ -84,7 +84,7 @@ body{
   --border-strong: oklch(0.35 0.03 65 / .22);
   --text: oklch(0.29 0.028 55);
   --text-dim: oklch(0.46 0.026 55);
-  --text-faint: oklch(0.6 0.022 58);
+  --text-faint: oklch(0.51 0.022 58); /* ≥4.5:1 on --bg/--card-2 (WCAG AA) */
   --grid: oklch(0.35 0.03 65 / .09);
   --bar: oklch(0.75 0.035 70);
   --heat-empty: oklch(0.35 0.03 65 / .07);
@@ -181,7 +181,7 @@ body{
 .trend-xname{font-size:11px;font-weight:500;color:var(--text-faint);font-family:"Manrope";transition:.15s}
 .trend-xtick.is-sel .trend-xname{color:var(--text);font-weight:700}
 .trend-xtick:hover .trend-xname{color:var(--text-dim)}
-.trend-xyear{font-size:9px;color:var(--text-faint);opacity:.7}
+.trend-xyear{font-size:9px;color:var(--text-faint)}
 .chart-axis-label{fill:var(--text-faint);font-size:11px;font-family:"Manrope";font-weight:500}
 .chart-axis-label.is-sel{fill:var(--text);font-weight:700}
 .chart-axis-year{fill:var(--text-faint);font-size:9px;font-family:"Manrope";opacity:.7}
@@ -237,7 +237,8 @@ body{
 .cal-top{display:flex;align-items:center;justify-content:space-between;gap:2px;width:100%}
 .cal-num{font-size:12.5px;font-weight:600;color:var(--text-faint);font-variant-numeric:tabular-nums;line-height:1}
 .cal-cell.has-spend .cal-num{color:var(--text)}
-.cal-today{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#fff;
+.cal-today{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#0d1420;
+  /* dark text clears 4.5:1 on every ACCENTS value; white fails on all of them */
   background:var(--accent);padding:1px 4px;border-radius:4px;line-height:1.3}
 .cal-spend{display:flex;flex-direction:column;gap:3px;width:100%}
 .cal-amt{font-size:11px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;line-height:1}
