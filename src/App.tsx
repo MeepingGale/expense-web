@@ -11,6 +11,7 @@ import type {
   Transaction,
 } from "./types";
 import { buildSeed, recompute, monthScaffold, postDueRecurring } from "./data/seed";
+import { buildDemoState, DEMO_FLAG_KEY } from "./data/demo";
 import { load, save, DEFAULT_SETTINGS, STORAGE_KEY } from "./data/storage";
 import { catColor, fmtUSD, setLedgerCurrency, pad2, toDateInput, ordinal } from "./data/format";
 import { CURRENCIES, WEEKDAYS } from "./data/constants";
@@ -522,6 +523,25 @@ export default function App() {
     setRecurring(EXPENSE.recurring.map((r) => ({ ...r, active: true })));
     setBudget(EXPENSE.monthlyBudget); setCurrency("USD");
     setFilterCat(null); setViewerTx(null); setIdx(EXPENSE.currentIndex);
+    setDemoMode(false);
+    try { localStorage.removeItem(DEMO_FLAG_KEY); } catch { /* best effort */ }
+  };
+
+  // ----- demo data (for the hosted demo — the ledger opens empty otherwise) -----
+  const [demoMode, setDemoMode] = useState<boolean>(() => {
+    try { return localStorage.getItem(DEMO_FLAG_KEY) === "1"; } catch { return false; }
+  });
+  const ledgerEmpty = months.every((m) => m.transactions.length === 0) && recurring.length === 0;
+  const loadDemo = () => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(buildDemoState()));
+      localStorage.setItem(DEMO_FLAG_KEY, "1");
+    } catch { setSaveFailed(true); return; }
+    location.reload(); // boot path validates + widens the scaffold, same as real data
+  };
+  const clearDemo = () => {
+    try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(DEMO_FLAG_KEY); } catch { /* best effort */ }
+    location.reload();
   };
 
   const rootStyle = { "--accent": t.accent } as React.CSSProperties;
@@ -532,6 +552,12 @@ export default function App() {
         <div className="save-warn" role="alert">
           ⚠ Your latest changes could not be saved — browser storage is full. Remove some large
           attachments (or export a CSV backup now) to avoid losing data when this tab closes.
+        </div>
+      )}
+      {demoMode && (
+        <div className="demo-chip" role="status">
+          <span>Demo data — explore freely, nothing here is real.</span>
+          <button onClick={clearDemo}>Clear &amp; start fresh</button>
         </div>
       )}
       <header className="topbar">
@@ -626,6 +652,12 @@ export default function App() {
       )}
       {view === "overview" && (
       <main className="grid">
+        {ledgerEmpty && !demoMode && (
+          <div className="demo-cta">
+            <span><b>Fresh ledger.</b> Add your first expense — or explore with a year of sample data first.</span>
+            <button className="btn ghost" onClick={loadDemo}>Load demo data</button>
+          </div>
+        )}
         {/* KPI row */}
         <KpiCard label="Total spent" value={fmtUSD(month.total)} delta={totalDelta ?? undefined} sub={cmp.label} />
         <KpiCard label="Avg / day" value={fmtUSD(avgPerDay, true)} sub={`over ${month.lastDay} days`} />

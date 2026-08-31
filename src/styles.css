@@ -30,7 +30,7 @@ body{
   --border-strong: oklch(1 0 0 / .14);
   --text: oklch(0.97 0.005 256);
   --text-dim: oklch(0.76 0.015 256);
-  --text-faint: oklch(0.6 0.018 256);
+  --text-faint: oklch(0.63 0.018 256); /* ≥4.5:1 on --bg for 12px text (WCAG AA) */
   --grid: oklch(1 0 0 / .06);
   --bar: oklch(0.62 0.02 256);
   --heat-empty: oklch(1 0 0 / .05);
@@ -846,3 +846,14 @@ label.csv-import{cursor:pointer}
   .trend-xtick{padding:9px 0}
   .undo-toast{bottom:calc(84px + env(safe-area-inset-bottom))} /* clear the bottom bar */
 }
+
+/* ---- demo mode (hosted demo affordances) ---- */
+.demo-cta{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  background:color-mix(in oklab,var(--accent) 9%,var(--card));
+  border:1px solid color-mix(in oklab,var(--accent) 30%,var(--border));
+  border-radius:14px;padding:14px 16px;font-size:13.5px}
+.demo-chip{position:sticky;top:0;z-index:59;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;
+  background:color-mix(in oklab,var(--accent) 12%,var(--card));border-bottom:1px solid var(--border);
+  padding:7px 12px;font-size:12.5px;font-weight:600}
+.demo-chip button{appearance:none;border:0;background:transparent;color:var(--accent);
+  font:inherit;font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:2px;padding:2px 4px}

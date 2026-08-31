@@ -49,7 +49,7 @@ export function ExportMenu({ months, catById, onPrint, onBulk }: ExportMenuProps
   const [open, setOpen] = useState<boolean>(false);
   return (
     <div className="theme-menu">
-      <button className="btn ghost export-btn" onClick={() => setOpen((o) => !o)}>
+      <button className="btn ghost export-btn" aria-label="Export" onClick={() => setOpen((o) => !o)}>
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3M3 13h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
         <span className="export-label">Export</span>
       </button>
