@@ -26,10 +26,12 @@ self.addEventListener("fetch", (e) => {
       fetch(e.request)
         .then((r) => {
           const copy = r.clone();
-          caches.open(CACHE).then((c) => c.put("/", copy));
+          // "./" resolves against the SW script URL, so the shell caches under
+          // the app's own path whether it's served at / or /expense-web/.
+          caches.open(CACHE).then((c) => c.put("./", copy));
           return r;
         })
-        .catch(() => caches.match("/")),
+        .catch(() => caches.match("./")),
     );
     return;
   }
